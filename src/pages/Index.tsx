@@ -8,9 +8,12 @@ import SubscriptionsSection from '@/components/sections/SubscriptionsSection';
 import LifeEventsSection from '@/components/sections/LifeEventsSection';
 import ReportsSection from '@/components/sections/ReportsSection';
 import AICoachSection from '@/components/sections/AICoachSection';
+import AICoachChatSection from '@/components/sections/AICoachChatSection';
 import CrisisModeSection from '@/components/sections/CrisisModeSection';
 import EMIIntelligenceSection from '@/components/sections/EMIIntelligenceSection';
 import GlobalIntelligenceSection from '@/components/sections/GlobalIntelligenceSection';
+import CommunitySupportSection from '@/components/sections/CommunitySupportSection';
+import FutureSelfProjectionSection from '@/components/sections/FutureSelfProjectionSection';
 import OnboardingForm from '@/components/onboarding/OnboardingForm';
 import AIChatbot from '@/components/chat/AIChatbot';
 import SpotlightCursor from '@/components/reactbits/SpotlightCursor';
@@ -26,10 +29,16 @@ const AppContent = () => {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardSection />;
+      case 'ai-chat':
+        return <AICoachChatSection />;
       case 'ai-coach':
         return <AICoachSection />;
       case 'crisis-mode':
         return <CrisisModeSection />;
+      case 'future-self':
+        return <FutureSelfProjectionSection />;
+      case 'community':
+        return <CommunitySupportSection />;
       case 'emi-intelligence':
         return <EMIIntelligenceSection />;
       case 'global-intelligence':
