@@ -2,13 +2,15 @@ import { useState } from 'react';
 import Header from '@/components/layout/Header';
 import Sidebar from '@/components/layout/Sidebar';
 import DashboardSection from '@/components/sections/DashboardSection';
-import TransactionsSection from '@/components/sections/TransactionsSection';
 import StressSignalsSection from '@/components/sections/StressSignalsSection';
 import BudgetSection from '@/components/sections/BudgetSection';
-import InsightsSection from '@/components/sections/InsightsSection';
 import SubscriptionsSection from '@/components/sections/SubscriptionsSection';
 import LifeEventsSection from '@/components/sections/LifeEventsSection';
 import ReportsSection from '@/components/sections/ReportsSection';
+import AICoachSection from '@/components/sections/AICoachSection';
+import CrisisModeSection from '@/components/sections/CrisisModeSection';
+import EMIIntelligenceSection from '@/components/sections/EMIIntelligenceSection';
+import GlobalIntelligenceSection from '@/components/sections/GlobalIntelligenceSection';
 import OnboardingForm from '@/components/onboarding/OnboardingForm';
 import AIChatbot from '@/components/chat/AIChatbot';
 import SpotlightCursor from '@/components/reactbits/SpotlightCursor';
@@ -24,14 +26,18 @@ const AppContent = () => {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardSection />;
-      case 'transactions':
-        return <TransactionsSection />;
+      case 'ai-coach':
+        return <AICoachSection />;
+      case 'crisis-mode':
+        return <CrisisModeSection />;
+      case 'emi-intelligence':
+        return <EMIIntelligenceSection />;
+      case 'global-intelligence':
+        return <GlobalIntelligenceSection />;
       case 'stress-signals':
         return <StressSignalsSection />;
       case 'budget':
         return <BudgetSection />;
-      case 'insights':
-        return <InsightsSection />;
       case 'subscriptions':
         return <SubscriptionsSection />;
       case 'life-events':
