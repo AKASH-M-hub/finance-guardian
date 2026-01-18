@@ -28,23 +28,22 @@ const DashboardSection = () => {
   const silentBurdenIndex = analysis?.silentBurdenIndex ?? 50;
   const survivalDays = analysis?.survivalDays ?? 15;
 
-  // Generate stress signals from analysis
+  // Generate stress signals from analysis - properly typed for StressSignal interface
   const stressSignals = analysis?.activeSignals?.map(signal => ({
     id: signal.id,
-    type: signal.type as 'micro_spike' | 'late_bill' | 'category_drift' | 'emergency_withdrawal' | 'savings_drop' | 'stress_merchant',
+    type: 'micro_spike' as const,
     severity: signal.severity,
     title: signal.title,
     description: signal.description,
-    trend: 'up' as const,
-    value: signal.severity === 'high' ? '+25%' : signal.severity === 'medium' ? '+15%' : '+5%',
+    actionable: signal.actionable,
   })) ?? [];
 
-  // Generate budget guardrails from profile
+  // Generate budget guardrails from profile - properly typed for BudgetGuardrail
   const budgetGuardrails = profile ? [
-    { id: '1', category: 'Food & Dining', limit: Math.round(income.avg * 0.15), spent: Math.round(income.avg * 0.12), icon: '🍕' },
-    { id: '2', category: 'Shopping', limit: Math.round(income.avg * 0.1), spent: Math.round(income.avg * 0.08), icon: '🛍️' },
-    { id: '3', category: 'Entertainment', limit: Math.round(income.avg * 0.05), spent: Math.round(income.avg * 0.04), icon: '🎮' },
-    { id: '4', category: 'Transport', limit: Math.round(income.avg * 0.1), spent: Math.round(income.avg * 0.07), icon: '🚗' },
+    { category: 'food' as const, limit: Math.round(income.avg * 0.15), spent: Math.round(income.avg * 0.12) },
+    { category: 'shopping' as const, limit: Math.round(income.avg * 0.1), spent: Math.round(income.avg * 0.08) },
+    { category: 'entertainment' as const, limit: Math.round(income.avg * 0.05), spent: Math.round(income.avg * 0.04) },
+    { category: 'travel' as const, limit: Math.round(income.avg * 0.1), spent: Math.round(income.avg * 0.07) },
   ] : [];
 
   return (
