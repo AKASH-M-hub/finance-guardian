@@ -2,10 +2,8 @@ import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { 
   LayoutDashboard, 
-  Receipt, 
   AlertTriangle, 
   Shield, 
-  TrendingUp,
   CreditCard,
   Calendar,
   FileText,
@@ -14,7 +12,10 @@ import {
   Brain,
   Siren,
   Calculator,
-  Globe
+  Globe,
+  MessageCircle,
+  Users,
+  Clock
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -27,8 +28,11 @@ interface SidebarProps {
 const Sidebar = ({ activeTab, onTabChange, isOpen = true, onClose }: SidebarProps) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'ai-chat', label: 'AI Coach Chat', icon: MessageCircle },
     { id: 'ai-coach', label: 'AI Coach', icon: Brain },
     { id: 'crisis-mode', label: 'Crisis Mode', icon: Siren },
+    { id: 'future-self', label: 'Future Self', icon: Clock },
+    { id: 'community', label: 'Community', icon: Users },
     { id: 'emi-intelligence', label: 'EMI Intelligence', icon: Calculator },
     { id: 'global-intelligence', label: 'World Intelligence', icon: Globe },
     { id: 'stress-signals', label: 'Stress Signals', icon: AlertTriangle },
