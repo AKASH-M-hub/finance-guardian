@@ -10,7 +10,11 @@ import {
   Calendar,
   FileText,
   HelpCircle,
-  X
+  X,
+  Brain,
+  Siren,
+  Calculator,
+  Globe
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -23,10 +27,12 @@ interface SidebarProps {
 const Sidebar = ({ activeTab, onTabChange, isOpen = true, onClose }: SidebarProps) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'transactions', label: 'Transactions', icon: Receipt },
+    { id: 'ai-coach', label: 'AI Coach', icon: Brain },
+    { id: 'crisis-mode', label: 'Crisis Mode', icon: Siren },
+    { id: 'emi-intelligence', label: 'EMI Intelligence', icon: Calculator },
+    { id: 'global-intelligence', label: 'World Intelligence', icon: Globe },
     { id: 'stress-signals', label: 'Stress Signals', icon: AlertTriangle },
     { id: 'budget', label: 'Budget Guardrails', icon: Shield },
-    { id: 'insights', label: 'Spending Insights', icon: TrendingUp },
     { id: 'subscriptions', label: 'Subscriptions', icon: CreditCard },
     { id: 'life-events', label: 'Life Events', icon: Calendar },
     { id: 'reports', label: 'Reports', icon: FileText },
@@ -54,7 +60,7 @@ const Sidebar = ({ activeTab, onTabChange, isOpen = true, onClose }: SidebarProp
             </Button>
           </div>
           
-          <nav className="space-y-1 flex-1">
+          <nav className="space-y-1 flex-1 overflow-y-auto">
             {menuItems.map((item) => (
               <Button
                 key={item.id}
