@@ -9,10 +9,16 @@ import InsightsSection from '@/components/sections/InsightsSection';
 import SubscriptionsSection from '@/components/sections/SubscriptionsSection';
 import LifeEventsSection from '@/components/sections/LifeEventsSection';
 import ReportsSection from '@/components/sections/ReportsSection';
+import OnboardingForm from '@/components/onboarding/OnboardingForm';
+import AIChatbot from '@/components/chat/AIChatbot';
+import SpotlightCursor from '@/components/reactbits/SpotlightCursor';
+import { UserProfileProvider, useUserProfile } from '@/contexts/UserProfileContext';
 
-const Index = () => {
+const AppContent = () => {
+  const { isOnboarded } = useUserProfile();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(!isOnboarded);
 
   const renderContent = () => {
     switch (activeTab) {
@@ -37,8 +43,18 @@ const Index = () => {
     }
   };
 
+  if (showOnboarding || !isOnboarded) {
+    return (
+      <>
+        <SpotlightCursor />
+        <OnboardingForm onComplete={() => setShowOnboarding(false)} />
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
+      <SpotlightCursor />
       <Header onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
       
       <div className="flex">
@@ -55,7 +71,17 @@ const Index = () => {
           </div>
         </main>
       </div>
+
+      <AIChatbot />
     </div>
+  );
+};
+
+const Index = () => {
+  return (
+    <UserProfileProvider>
+      <AppContent />
+    </UserProfileProvider>
   );
 };
 
