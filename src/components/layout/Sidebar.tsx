@@ -20,7 +20,8 @@ import {
   Activity,
   TrendingUp,
   Heart,
-  Sparkles
+  Sparkles,
+  Rewind
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -52,6 +53,7 @@ const Sidebar = ({ activeTab, onTabChange, isOpen = true, onClose }: SidebarProp
     { id: 'lifestyle-inflation', label: 'Lifestyle Inflation', icon: TrendingUp },
     { id: 'emotional-spending', label: 'Emotional Spending', icon: Heart },
     { id: 'financial-recovery', label: 'Recovery Engine', icon: Sparkles },
+    { id: 'regret-prevention', label: 'Regret Simulator', icon: Rewind },
     { id: 'reports', label: 'Reports', icon: FileText },
   ];
 

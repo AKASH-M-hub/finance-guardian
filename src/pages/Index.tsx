@@ -22,6 +22,7 @@ import { DecisionFatigueSection } from '@/components/sections/DecisionFatigueSec
 import LifestyleInflationSection from '@/components/sections/LifestyleInflationSection';
 import EmotionalSpendingSection from '@/components/sections/EmotionalSpendingSection';
 import FinancialRecoverySection from '@/components/sections/FinancialRecoverySection';
+import RegretPreventionSection from '@/components/sections/RegretPreventionSection';
 import OnboardingForm from '@/components/onboarding/OnboardingForm';
 import AIChatbot from '@/components/chat/AIChatbot';
 import SpotlightCursor from '@/components/reactbits/SpotlightCursor';
@@ -75,6 +76,8 @@ const AppContent = () => {
         return <EmotionalSpendingSection />;
       case 'financial-recovery':
         return <FinancialRecoverySection />;
+      case 'regret-prevention':
+        return <RegretPreventionSection />;
       case 'reports':
         return <ReportsSection />;
       default:
