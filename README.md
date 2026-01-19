@@ -1,73 +1,137 @@
-# Welcome to your Lovable project
+# ✅ Future Your Finance  
+## Invisible Financial Stress Detection & Debt Prevention System  
 
-## Project info
+🚀 **Future Your Finance** is an AI-powered fintech solution that detects **invisible financial stress early** using spending habits, transaction patterns, and recurring obligations — then helps prevent debt by providing smart insights, alerts, and personalized recommendations.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+---
 
-## How can I edit this code?
+## 📌 Problem Statement  
+Most people don’t realize they are financially stressed until it becomes serious (loan dependency, missed bills, low savings, or debt traps).
 
-There are several ways of editing your application.
+Hidden reasons include:
+- Lifestyle inflation without awareness  
+- Too many subscriptions and recurring payments  
+- EMI and bill pressure silently increasing  
+- Irregular spending patterns  
+- Poor monthly budgeting habits  
 
-**Use Lovable**
+✅ **Future Your Finance** solves this by identifying early warning signals and helping users stay stable **before falling into debt**.
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+---
 
-Changes made via Lovable will be committed automatically to this repo.
+## 💡 Why This Project is Unique?  
+Unlike normal expense trackers, this system focuses on **Invisible Financial Stress** — meaning it detects problems before the user feels the impact.
 
-**Use your preferred IDE**
+It works like a **financial early-warning system** that protects users from debt.
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+---
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## 🎯 Key Features  
+✅ **Debt Risk Score (0–100)**  
+- Predicts the user’s current debt danger level  
 
-Follow these steps:
+✅ **Silent Burden Detection**  
+- Finds how much income is already “locked” in bills, EMIs, and subscriptions  
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+✅ **Expense Leak Finder**  
+- Identifies unnecessary and repeating spending patterns  
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+✅ **Smart Spending Alerts**  
+- Warns when spending goes beyond healthy limits  
 
-# Step 3: Install the necessary dependencies.
-npm i
+✅ **Category Intelligence**  
+- Tracks where money is being wasted (food, shopping, entertainment, etc.)  
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+✅ **Monthly Stress Summary**  
+- Gives a clear overview of financial health in simple words  
 
-**Edit a file directly in GitHub**
+✅ **Personalized Prevention Suggestions**  
+- Actions to reduce financial pressure (cut subscriptions, limit categories, improve savings)  
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+✅ **Interactive Dashboard**  
+- Visual graphs, trend analysis, and financial insights  
 
-**Use GitHub Codespaces**
+✅ **Stock + News Insights**  
+- Live stock market tracking and global financial news updates  
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+---
 
-## What technologies are used for this project?
+## 🔄 How It Works (Simple Flow)  
+1️⃣ User enters income, transactions, bills, EMI, subscriptions  
+2️⃣ System analyzes monthly spending habits and obligations  
+3️⃣ Stress signals are detected using scoring & patterns  
+4️⃣ A risk score is generated (Low / Medium / High Risk)  
+5️⃣ User gets prevention tips and alerts before debt happens  
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## 🧑‍🎓 Real-Time Use Cases  
+✅ Students managing monthly pocket money  
+✅ Salaried people with EMI stress  
+✅ People with high subscription + UPI expenses  
+✅ Users trying to improve savings habits  
+✅ Anyone who wants to avoid future debt problems  
 
-## How can I deploy this project?
+---
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+## 🛠️ Tech Stack  
 
-## Can I connect a custom domain to my Lovable project?
+### ✅ Core Frontend  
+- **React**  
+- **TypeScript**  
+- **Vite**  
+- **SWC**  
 
-Yes, you can!
+### ✅ Styling / UI  
+- **Tailwind CSS**  
+- **Radix UI**  
+- **shadcn/ui**  
+- **Lucide Icons**  
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### ✅ Animations / UI Effects  
+- **Framer Motion**  
+- **Embla Carousel**  
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+### ✅ State / Data  
+- **TanStack React Query**  
+
+### ✅ Forms / Validation  
+- **React Hook Form**  
+- **Zod**  
+- **date-fns**  
+
+### ✅ Routing  
+- **React Router**  
+
+### ✅ Charts / Dashboard  
+- **Recharts**  
+
+### ✅ Notifications / UX  
+- **Sonner**  
+- **cmdk**  
+- **Vaul**  
+
+### ✅ Backend / Database  
+- **Supabase** *(Auth + Database + Storage + Edge Functions)*  
+
+### ✅ APIs / Integrations  
+- **Alpha Vantage** *(Stock Data)*  
+- **NewsAPI** *(Global News)*  
+
+### ✅ Testing / Quality  
+- **Vitest**  
+- **Testing Library**  
+- **ESLint**  
+
+### ✅ Build / Dev Tools  
+- **PostCSS**  
+- **Autoprefixer**  
+
+---
+
+## ⚙️ Installation & Run Locally  
+
+### ✅ 1. Clone the repository  
+```bash
+git clone https://github.com/sanjay-arr/finance-guardian.git
+cd finance-guardian
