@@ -9,6 +9,11 @@ export {
   // Helper: Get current user
   getCurrentUser,
   
+  // User Registration tracking
+  recordUserRegistration,
+  getUserRegistration,
+  getAllRegistrations,
+  
   // Profile operations
   getProfile,
   createProfile,

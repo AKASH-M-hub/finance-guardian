@@ -31,12 +31,69 @@ type GoalUpdate = Database['public']['Tables']['goals']['Update'];
 type GoalTransaction = Database['public']['Tables']['goal_transactions']['Row'];
 type GoalTransactionInsert = Database['public']['Tables']['goal_transactions']['Insert'];
 
+type UserRegistration = Database['public']['Tables']['user_registrations']['Row'];
+type UserRegistrationInsert = Database['public']['Tables']['user_registrations']['Insert'];
+
 // =====================================================
 // HELPER: Get current user
 // =====================================================
 export async function getCurrentUser() {
   const { data: { user }, error } = await supabase.auth.getUser();
   return { user, error };
+}
+
+// =====================================================
+// USER REGISTRATION OPERATIONS
+// =====================================================
+
+export async function recordUserRegistration(registration: {
+  user_id: string;
+  email: string;
+  registration_source?: string;
+  ip_address?: string;
+  user_agent?: string;
+}) {
+  try {
+    const { data, error } = await supabase
+      .from('user_registrations')
+      .insert({
+        user_id: registration.user_id,
+        email: registration.email,
+        registration_source: registration.registration_source || 'web_app',
+        ip_address: registration.ip_address,
+        user_agent: registration.user_agent,
+        registration_date: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    return { data, error };
+  } catch (error) {
+    // Table might not exist yet - fail silently
+    console.warn('user_registrations table not found - run RUN_IN_SUPABASE.sql');
+    return { data: null, error };
+  }
+}
+
+export async function getUserRegistration(userId: string) {
+  const { data, error } = await supabase
+    .from('user_registrations')
+    .select('*')
+    .eq('user_id', userId)
+    .single();
+
+  return { data, error };
+}
+
+export async function getAllRegistrations(limit = 100) {
+  // Admin function - would need additional RLS policies for admin access
+  const { data, error } = await supabase
+    .from('user_registrations')
+    .select('*')
+    .order('registration_date', { ascending: false })
+    .limit(limit);
+
+  return { data, error };
 }
 
 // =====================================================
@@ -54,11 +111,35 @@ export async function getProfile(userId: string) {
 }
 
 export async function createProfile(profile: ProfileInsert) {
+  // If email not provided, fetch from auth.users
+  let profileData = { ...profile };
+  
+  if (!profileData.email && profileData.id) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) {
+      profileData.email = user.email;
+    }
+  }
+
   const { data, error } = await supabase
     .from('profiles')
-    .insert(profile)
+    .insert(profileData)
     .select()
     .single();
+
+  // Record registration in audit table
+  if (data && profileData.email) {
+    try {
+      await recordUserRegistration({
+        user_id: data.id,
+        email: profileData.email,
+        user_agent: navigator?.userAgent,
+      });
+    } catch (error) {
+      // Fail silently if table doesn't exist yet
+      console.warn('Could not record registration:', error);
+    }
+  }
 
   return { data, error };
 }
@@ -721,4 +802,6 @@ export type {
   GoalUpdate,
   GoalTransaction,
   GoalTransactionInsert,
+  UserRegistration,
+  UserRegistrationInsert,
 };

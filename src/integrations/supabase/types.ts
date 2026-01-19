@@ -12,6 +12,7 @@ export type Database = {
       profiles: {
         Row: {
           id: string
+          email: string | null
           monthly_income_range: 'below_25k' | '25k_50k' | '50k_1L' | 'above_1L'
           income_type: 'salary' | 'student' | 'freelance' | 'business'
           country: string
@@ -32,6 +33,7 @@ export type Database = {
         }
         Insert: {
           id: string
+          email?: string | null
           monthly_income_range: 'below_25k' | '25k_50k' | '50k_1L' | 'above_1L'
           income_type: 'salary' | 'student' | 'freelance' | 'business'
           country?: string
@@ -394,6 +396,38 @@ export type Database = {
           amount?: number
           transaction_type?: 'contribution' | 'withdrawal'
           notes?: string | null
+          created_at?: string
+        }
+      }
+      user_registrations: {
+        Row: {
+          id: string
+          user_id: string
+          email: string
+          registration_date: string
+          registration_source: string
+          ip_address: string | null
+          user_agent: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          email: string
+          registration_date?: string
+          registration_source?: string
+          ip_address?: string | null
+          user_agent?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          email?: string
+          registration_date?: string
+          registration_source?: string
+          ip_address?: string | null
+          user_agent?: string | null
           created_at?: string
         }
       }
