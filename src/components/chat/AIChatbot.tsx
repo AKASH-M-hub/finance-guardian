@@ -8,10 +8,13 @@ import SpotlightButton from '@/components/reactbits/SpotlightButton';
 import PulseRing from '@/components/reactbits/PulseRing';
 import { MessageCircle, Send, X, Bot, User, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { syncChatSession } from '@/integrations/supabase/helpers';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  id?: string;
+  timestamp?: string;
 }
 
 const AIChatbot: React.FC = () => {
@@ -27,19 +30,56 @@ const AIChatbot: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const syncTimeoutRef = useRef<NodeJS.Timeout>();
+  const sessionIdRef = useRef<string>(Date.now().toString());
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [messages]);
+
+    // Debounced sync to database (3-second delay)
+    if (syncTimeoutRef.current) {
+      clearTimeout(syncTimeoutRef.current);
+    }
+
+    syncTimeoutRef.current = setTimeout(() => {
+      if (profile?.id && messages.length > 1) {
+        const messagesWithIds = messages.map((msg, idx) => ({
+          ...msg,
+          id: msg.id || `msg-${idx}-${Date.now()}`,
+          timestamp: msg.timestamp || new Date().toISOString(),
+        }));
+
+        syncChatSession(profile.id, {
+          id: sessionIdRef.current,
+          title: 'AI Coach Chat',
+          messages: messagesWithIds,
+        }).catch(error => console.error('Chat sync error:', error));
+      }
+    }, 3000);
+
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, [messages, profile?.id]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage = input.trim();
+    const userMessageId = `msg-user-${Date.now()}`;
+    const userMessageTimestamp = new Date().toISOString();
+    
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setMessages(prev => [...prev, { 
+      role: 'user', 
+      content: userMessage,
+      id: userMessageId,
+      timestamp: userMessageTimestamp,
+    }]);
     setIsLoading(true);
 
     try {
@@ -66,7 +106,14 @@ const AIChatbot: React.FC = () => {
       let assistantMessage = '';
 
       if (reader) {
-        setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+        const assistantMessageId = `msg-assistant-${Date.now()}`;
+        const assistantMessageTimestamp = new Date().toISOString();
+        setMessages(prev => [...prev, { 
+          role: 'assistant', 
+          content: '',
+          id: assistantMessageId,
+          timestamp: assistantMessageTimestamp,
+        }]);
 
         while (true) {
           const { done, value } = await reader.read();
