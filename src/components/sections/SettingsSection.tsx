@@ -124,7 +124,7 @@ const SettingsSection: React.FC = () => {
   }));
 
   const goalProgressData = goals.map(goal => ({
-    name: goal.name,
+    name: goal.title,
     progress: Math.round((goal.currentAmount / goal.targetAmount) * 100),
     target: 100,
   }));
@@ -163,28 +163,28 @@ const SettingsSection: React.FC = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <InteractiveCard className="p-4 text-center">
               <div className="text-3xl font-bold text-primary">
-                <CountUpNumber end={checkIns.length} duration={1000} />
+                <CountUpNumber value={checkIns.length} duration={1000} />
               </div>
               <p className="text-sm text-muted-foreground">Total Check-ins</p>
             </InteractiveCard>
             
             <InteractiveCard className="p-4 text-center">
               <div className="text-3xl font-bold text-primary">
-                <CountUpNumber end={goals.length} duration={1000} />
+                <CountUpNumber value={goals.length} duration={1000} />
               </div>
               <p className="text-sm text-muted-foreground">Active Goals</p>
             </InteractiveCard>
             
             <InteractiveCard className="p-4 text-center">
               <div className="text-3xl font-bold text-primary">
-                <CountUpNumber end={chatHistory.length} duration={1000} />
+                <CountUpNumber value={chatHistory.length} duration={1000} />
               </div>
               <p className="text-sm text-muted-foreground">AI Conversations</p>
             </InteractiveCard>
             
             <InteractiveCard className="p-4 text-center">
               <div className="text-3xl font-bold text-primary">
-                <CountUpNumber end={analysis?.healthScore || 0} duration={1000} />%
+                <CountUpNumber value={analysis?.healthScore || 0} duration={1000} />%
               </div>
               <p className="text-sm text-muted-foreground">Health Score</p>
             </InteractiveCard>

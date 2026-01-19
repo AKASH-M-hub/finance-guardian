@@ -21,7 +21,11 @@ import {
   TrendingUp,
   Heart,
   Sparkles,
-  Rewind
+  Rewind,
+  Settings,
+  Lock,
+  Atom,
+  Cpu
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -54,7 +58,11 @@ const Sidebar = ({ activeTab, onTabChange, isOpen = true, onClose }: SidebarProp
     { id: 'emotional-spending', label: 'Emotional Spending', icon: Heart },
     { id: 'financial-recovery', label: 'Recovery Engine', icon: Sparkles },
     { id: 'regret-prevention', label: 'Regret Simulator', icon: Rewind },
+    { id: 'privacy-trust', label: 'Privacy & Trust', icon: Lock },
+    { id: 'quantum-simulator', label: 'Quantum Simulator', icon: Atom },
+    { id: 'cognitive-load', label: 'Cognitive Load', icon: Cpu },
     { id: 'reports', label: 'Reports', icon: FileText },
+    { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
   return (

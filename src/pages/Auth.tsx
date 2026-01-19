@@ -174,14 +174,8 @@ const Auth = () => {
               </h1>
               <div className="text-xl text-muted-foreground h-8">
                 <TypewriterText 
-                  texts={[
-                    "Your AI-powered financial wellness companion",
-                    "No judgment. Just support.",
-                    "Build healthy money habits today",
-                    "Take control of your financial future"
-                  ]}
+                  text="Your AI-powered financial wellness companion"
                   speed={50}
-                  pauseDuration={2000}
                 />
               </div>
             </div>
