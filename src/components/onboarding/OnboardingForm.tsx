@@ -77,8 +77,8 @@ const OnboardingForm: React.FC<OnboardingFormProps> = ({ onComplete }) => {
     updateField('commitments', updated);
   };
 
-  const handleSubmit = () => {
-    setProfile(formData as UserProfile);
+  const handleSubmit = async () => {
+    await setProfile(formData as UserProfile);
     onComplete();
   };
 

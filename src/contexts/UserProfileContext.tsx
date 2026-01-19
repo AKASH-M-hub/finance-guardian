@@ -10,6 +10,19 @@ import {
   UserGoal,
   incomeRangeToNumber 
 } from '@/types/userProfile';
+import { supabase } from '@/integrations/supabase/client';
+import { 
+  getProfile, 
+  createProfile, 
+  getCurrentAnalysis, 
+  createAnalysis,
+  getRecentCheckIns,
+  createCheckIn,
+  getActiveGoals,
+  createGoal
+} from '@/integrations/supabase/helpers';
+import { mapDbProfile, mapDbAnalysis } from '@/integrations/supabase/import';
+import { useToast } from '@/hooks/use-toast';
 
 interface UserProfileContextType {
   profile: UserProfile | null;
@@ -28,11 +41,6 @@ interface UserProfileContextType {
 
 const UserProfileContext = createContext<UserProfileContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'fyf_user_profile';
-const CHECKINS_KEY = 'fyf_check_ins';
-const GOALS_KEY = 'fyf_goals';
-const STREAKS_KEY = 'fyf_streaks';
-
 export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [profile, setProfileState] = useState<UserProfile | null>(null);
   const [analysis, setAnalysis] = useState<FinancialAnalysis | null>(null);
@@ -44,26 +52,54 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
     { id: '3', type: 'savings_daily', currentDays: 0, longestDays: 0, lastUpdated: new Date().toISOString() },
     { id: '4', type: 'check_in', currentDays: 0, longestDays: 0, lastUpdated: new Date().toISOString() },
   ]);
+  const { toast } = useToast();
 
-  // Load from localStorage on mount
+  // Hydrate from Supabase on mount
   useEffect(() => {
-    const savedProfile = localStorage.getItem(STORAGE_KEY);
-    const savedCheckIns = localStorage.getItem(CHECKINS_KEY);
-    const savedGoals = localStorage.getItem(GOALS_KEY);
-    const savedStreaks = localStorage.getItem(STREAKS_KEY);
-    
-    if (savedProfile) {
-      setProfileState(JSON.parse(savedProfile));
-    }
-    if (savedCheckIns) {
-      setCheckIns(JSON.parse(savedCheckIns));
-    }
-    if (savedGoals) {
-      setGoals(JSON.parse(savedGoals));
-    }
-    if (savedStreaks) {
-      setStreaks(JSON.parse(savedStreaks));
-    }
+    const hydrateFromSupabase = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      try {
+        const profileResult = await getProfile(session.user.id);
+        if (profileResult.data) {
+          const hydratedProfile = mapDbProfile(profileResult.data);
+          setProfileState(hydratedProfile);
+
+          const analysisResult = await getCurrentAnalysis(session.user.id);
+          if (analysisResult.data) {
+            setAnalysis(mapDbAnalysis(analysisResult.data));
+          }
+
+          const checkInsResult = await getRecentCheckIns(session.user.id);
+          if (checkInsResult.data) {
+            setCheckIns(checkInsResult.data.map(ci => ({
+              id: ci.id,
+              date: ci.check_in_date,
+              moodScore: ci.mood_score,
+              spendingControl: ci.spending_control,
+              notes: ci.notes || undefined
+            })));
+          }
+
+          const goalsResult = await getActiveGoals(session.user.id);
+          if (goalsResult.data) {
+            setGoals(goalsResult.data.map(g => ({
+              id: g.id,
+              title: g.title,
+              targetAmount: g.target_amount,
+              currentAmount: g.current_amount,
+              deadline: g.deadline,
+              category: g.category as UserGoal['category']
+            })));
+          }
+        }
+      } catch (error) {
+        console.error('Error hydrating from Supabase:', error);
+      }
+    };
+
+    hydrateFromSupabase();
   }, []);
 
   // Compute analysis whenever profile changes
@@ -71,45 +107,183 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
     if (profile) {
       const computedAnalysis = computeFinancialAnalysis(profile);
       setAnalysis(computedAnalysis);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(profile));
     }
   }, [profile]);
 
-  // Save check-ins and goals
-  useEffect(() => {
-    localStorage.setItem(CHECKINS_KEY, JSON.stringify(checkIns));
-  }, [checkIns]);
+  const setProfile = async (newProfile: UserProfile) => {
+    const updatedProfile = { ...newProfile, isOnboarded: true, updatedAt: new Date().toISOString() };
+    setProfileState(updatedProfile);
 
-  useEffect(() => {
-    localStorage.setItem(GOALS_KEY, JSON.stringify(goals));
-  }, [goals]);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
 
-  useEffect(() => {
-    localStorage.setItem(STREAKS_KEY, JSON.stringify(streaks));
-  }, [streaks]);
+    try {
+      const existingProfile = await getProfile(session.user.id);
+      
+      const moneyFeelingMap: Record<string, any> = {
+        calm: 'comfortable',
+        slightly_worried: 'slightly_worried',
+        often_stressed: 'very_stressed',
+        avoid_checking: 'crisis_mode',
+      };
 
-  const setProfile = (newProfile: UserProfile) => {
-    setProfileState({ ...newProfile, isOnboarded: true, updatedAt: new Date().toISOString() });
+      const reachZeroMap: Record<string, any> = {
+        never: 'never',
+        sometimes: 'sometimes',
+        often: 'often',
+      };
+
+      const emergencyMap: Record<string, any> = {
+        can_handle: 'can_handle',
+        will_struggle: 'will_struggle',
+        need_to_borrow: 'no_safety_net',
+      };
+
+      const topImpulseMap: Record<string, any> = {
+        food_delivery: 'food_delivery',
+        shopping: 'shopping',
+        travel: 'travel',
+        online_services: 'entertainment',
+      };
+
+      const profilePayload = {
+        id: session.user.id,
+        monthly_income_range: updatedProfile.monthlyIncomeRange,
+        income_type: updatedProfile.incomeType,
+        country: updatedProfile.country || 'India',
+        commitments: updatedProfile.commitments,
+        total_fixed_amount: updatedProfile.totalFixedAmount,
+        spending_style: updatedProfile.spendingStyle,
+        overspend_trigger: updatedProfile.overspendTrigger,
+        top_impulse_category: topImpulseMap[updatedProfile.topImpulseCategory] || 'shopping',
+        money_feeling: moneyFeelingMap[updatedProfile.moneyFeeling] || 'comfortable',
+        reach_zero_frequency: reachZeroMap[updatedProfile.reachZeroFrequency] || 'never',
+        emergency_readiness: emergencyMap[updatedProfile.emergencyReadiness] || 'will_struggle',
+        life_situation: updatedProfile.lifeSituation || 'none',
+        planned_purchase: updatedProfile.plannedPurchase || 'none',
+        ai_help_level: updatedProfile.aiHelpLevel || 'only_insights',
+        is_onboarded: true,
+      };
+
+      if (existingProfile.data) {
+        await supabase.from('profiles').update(profilePayload).eq('user_id', session.user.id);
+      } else {
+        await createProfile(profilePayload);
+      }
+
+      const computedAnalysis = computeFinancialAnalysis(updatedProfile);
+      const riskLevelMap: Record<string, any> = {
+        safe: 'safe',
+        watch: 'caution',
+        crisis: 'crisis',
+      };
+
+      const analysisPayload = {
+        user_id: session.user.id,
+        stress_score: computedAnalysis.stressScore,
+        risk_level: riskLevelMap[computedAnalysis.riskLevel] || 'caution',
+        silent_burden_index: computedAnalysis.silentBurdenIndex,
+        survival_days: computedAnalysis.survivalDays,
+        debt_risk: computedAnalysis.debtRisk,
+        emergency_fund_target: computedAnalysis.emergencyFundTarget,
+        weekly_budget: computedAnalysis.weeklyBudget,
+        daily_budget: computedAnalysis.dailyBudget,
+        recovery_days: computedAnalysis.recoveryDays,
+        health_score: computedAnalysis.healthScore,
+        is_current: true,
+        analyzed_at: new Date().toISOString(),
+      };
+
+      const analysisResult = await createAnalysis(analysisPayload);
+      const analysisId = analysisResult.data?.id;
+
+      if (analysisId) {
+        const signalsPayload = (computedAnalysis.activeSignals || []).map(s => ({
+          analysis_id: analysisId,
+          user_id: session.user.id,
+          signal_id: s.id,
+          signal_type: s.type,
+          severity: s.severity,
+          title: s.title,
+          description: s.description,
+          actionable: s.actionable,
+          is_acknowledged: false,
+          is_resolved: false,
+        }));
+
+        if (signalsPayload.length) {
+          await supabase.from('active_signals').insert(signalsPayload);
+        }
+
+        const recommendationsPayload = (computedAnalysis.recommendations || []).map(r => ({
+          analysis_id: analysisId,
+          user_id: session.user.id,
+          recommendation_id: r.id,
+          priority: r.priority,
+          title: r.title,
+          description: r.description,
+          action: r.action,
+          category: r.category,
+          is_accepted: false,
+          is_completed: false,
+        }));
+
+        if (recommendationsPayload.length) {
+          await supabase.from('recommendations').insert(recommendationsPayload);
+        }
+      }
+
+      toast({
+        title: 'Profile saved successfully!',
+        description: 'Your financial profile has been saved to the database.',
+      });
+    } catch (error) {
+      console.error('Error saving profile to Supabase:', error);
+      toast({
+        title: 'Error saving profile',
+        description: 'There was an error saving your profile. Please try again.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const clearProfile = () => {
     setProfileState(null);
     setAnalysis(null);
-    localStorage.removeItem(STORAGE_KEY);
   };
 
-  const addCheckIn = (checkIn: Omit<DailyCheckIn, 'id'>) => {
-    const newCheckIn: DailyCheckIn = {
-      ...checkIn,
-      id: Date.now().toString(),
-    };
-    setCheckIns(prev => [newCheckIn, ...prev]);
-    
-    // Update streaks
-    if (checkIn.stayedUnderBudget) {
-      updateStreak('under_budget');
+  const addCheckIn = async (checkIn: Omit<DailyCheckIn, 'id'>) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+
+    try {
+      const result = await createCheckIn({
+        user_id: session.user.id,
+        check_in_date: checkIn.date,
+        mood_score: checkIn.moodScore,
+        spending_control: checkIn.spendingControl,
+        notes: checkIn.notes || null
+      });
+
+      if (result.data) {
+        const newCheckIn: DailyCheckIn = {
+          id: result.data.id,
+          date: result.data.check_in_date,
+          moodScore: result.data.mood_score,
+          spendingControl: result.data.spending_control,
+          notes: result.data.notes || undefined
+        };
+        setCheckIns(prev => [newCheckIn, ...prev]);
+      }
+
+      // Update streaks
+      if (checkIn.stayedUnderBudget) {
+        updateStreak('under_budget');
+      }
+      updateStreak('check_in');
+    } catch (error) {
+      console.error('Error saving check-in:', error);
     }
-    updateStreak('check_in');
   };
 
   const updateStreak = (type: Streak['type']) => {
@@ -127,12 +301,35 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
     }));
   };
 
-  const addGoal = (goal: Omit<UserGoal, 'id'>) => {
-    const newGoal: UserGoal = {
-      ...goal,
-      id: Date.now().toString(),
-    };
-    setGoals(prev => [...prev, newGoal]);
+  const addGoal = async (goal: Omit<UserGoal, 'id'>) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+
+    try {
+      const result = await createGoal({
+        user_id: session.user.id,
+        title: goal.title,
+        target_amount: goal.targetAmount,
+        current_amount: goal.currentAmount,
+        deadline: goal.deadline,
+        category: goal.category,
+        status: 'active'
+      });
+
+      if (result.data) {
+        const newGoal: UserGoal = {
+          id: result.data.id,
+          title: result.data.title,
+          targetAmount: result.data.target_amount,
+          currentAmount: result.data.current_amount,
+          deadline: result.data.deadline,
+          category: result.data.category as UserGoal['category']
+        };
+        setGoals(prev => [...prev, newGoal]);
+      }
+    } catch (error) {
+      console.error('Error saving goal:', error);
+    }
   };
 
   const updateGoalProgress = (goalId: string, amount: number) => {
