@@ -6,6 +6,9 @@ export type { Database } from './types';
 
 // Re-export all helper functions
 export {
+  // Helper: Get current user
+  getCurrentUser,
+  
   // Profile operations
   getProfile,
   createProfile,
@@ -31,12 +34,15 @@ export {
   getMessages,
   addMessage,
   updateConversationTitle,
+  syncChatSession,
+  getChatSession,
   
   // Check-ins
   getTodayCheckIn,
   getRecentCheckIns,
   createCheckIn,
   updateCheckIn,
+  syncTodayCheckIn,
   
   // Goals
   getActiveGoals,
@@ -46,10 +52,19 @@ export {
   completeGoal,
   addGoalTransaction,
   getGoalTransactions,
+  syncGoals,
+  syncGoalTransaction,
   
   // Bulk operations
   getUserDashboardData,
 } from './helpers';
+
+// Re-export data sync service
+export {
+  syncAllUserData,
+  getDataSyncStatus,
+  clearLocalStorageCache,
+} from './dataSync';
 
 // Re-export types
 export type {

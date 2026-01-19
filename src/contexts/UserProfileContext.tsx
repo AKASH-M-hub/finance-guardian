@@ -19,7 +19,10 @@ import {
   getRecentCheckIns,
   createCheckIn,
   getActiveGoals,
-  createGoal
+  createGoal,
+  syncTodayCheckIn,
+  syncGoals,
+  syncGoalTransaction,
 } from '@/integrations/supabase/helpers';
 import { mapDbProfile, mapDbAnalysis } from '@/integrations/supabase/import';
 import { useToast } from '@/hooks/use-toast';
@@ -257,20 +260,21 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
     if (!session?.user) return;
 
     try {
-      const result = await createCheckIn({
-        user_id: session.user.id,
-        check_in_date: checkIn.date,
-        mood_score: checkIn.moodScore,
-        spending_control: checkIn.spendingControl,
-        notes: checkIn.notes || null
+      // Use new sync function that properly handles check-ins
+      const result = await syncTodayCheckIn(session.user.id, {
+        mood: checkIn.mood || 'okay',
+        spent_today: checkIn.spentToday || 0,
+        stayed_under_budget: checkIn.stayedUnderBudget ?? true,
+        notes: checkIn.notes || undefined,
       });
 
       if (result.data) {
         const newCheckIn: DailyCheckIn = {
           id: result.data.id,
           date: result.data.check_in_date,
-          moodScore: result.data.mood_score,
-          spendingControl: result.data.spending_control,
+          mood: result.data.mood,
+          spentToday: result.data.spent_today,
+          stayedUnderBudget: result.data.stayed_under_budget,
           notes: result.data.notes || undefined
         };
         setCheckIns(prev => [newCheckIn, ...prev]);
@@ -306,33 +310,39 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
     if (!session?.user) return;
 
     try {
-      const result = await createGoal({
-        user_id: session.user.id,
+      // Sync goals to Supabase
+      const syncResult = await syncGoals(session.user.id, [{
+        goal_type: goal.category,
         title: goal.title,
         target_amount: goal.targetAmount,
         current_amount: goal.currentAmount,
-        deadline: goal.deadline,
-        category: goal.category,
-        status: 'active'
-      });
+        target_date: goal.deadline,
+        status: 'active',
+      }]);
 
-      if (result.data) {
+      if (syncResult.data && syncResult.data.length > 0) {
+        const createdGoal = syncResult.data[0];
         const newGoal: UserGoal = {
-          id: result.data.id,
-          title: result.data.title,
-          targetAmount: result.data.target_amount,
-          currentAmount: result.data.current_amount,
-          deadline: result.data.deadline,
-          category: result.data.category as UserGoal['category']
+          id: createdGoal.id,
+          title: createdGoal.title,
+          targetAmount: createdGoal.target_amount,
+          currentAmount: createdGoal.current_amount,
+          deadline: createdGoal.target_date || new Date().toISOString(),
+          category: (createdGoal.goal_type as any) || 'custom',
+          microGoals: goal.microGoals || [],
         };
         setGoals(prev => [...prev, newGoal]);
+        console.log('Goal synced successfully:', newGoal);
       }
     } catch (error) {
       console.error('Error saving goal:', error);
     }
   };
 
-  const updateGoalProgress = (goalId: string, amount: number) => {
+  const updateGoalProgress = async (goalId: string, amount: number) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session?.user) return;
+
     setGoals(prev => prev.map(goal => {
       if (goal.id === goalId) {
         return {
@@ -342,6 +352,17 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
       }
       return goal;
     }));
+
+    // Sync transaction to Supabase
+    try {
+      await syncGoalTransaction(session.user.id, goalId, {
+        amount,
+        transaction_type: 'contribution',
+        notes: 'Goal progress update',
+      });
+    } catch (error) {
+      console.error('Error syncing goal transaction:', error);
+    }
   };
 
   const crisisStatus = computeCrisisStatus(analysis);

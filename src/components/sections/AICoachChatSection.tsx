@@ -12,6 +12,7 @@ import InteractiveCard from '@/components/reactbits/InteractiveCard';
 import TypewriterText from '@/components/reactbits/TypewriterText';
 import ProgressRing from '@/components/reactbits/ProgressRing';
 import CountUpNumber from '@/components/reactbits/CountUpNumber';
+import { syncChatSession, getCurrentUser } from '@/integrations/supabase';
 import { 
   MessageCircle, 
   Send, 
@@ -54,8 +55,21 @@ const AICoachChatSection: React.FC = () => {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showTypewriter, setShowTypewriter] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Get current user
+  useEffect(() => {
+    const getUser = async () => {
+      const { user } = await getCurrentUser();
+      if (user) {
+        setUserId(user.id);
+      }
+    };
+    getUser();
+  }, []);
 
   // Load chat history on mount
   useEffect(() => {
@@ -71,12 +85,36 @@ const AICoachChatSection: React.FC = () => {
     }
   }, []);
 
-  // Save sessions whenever they change
+  // Save sessions whenever they change and sync to Supabase
   useEffect(() => {
     if (sessions.length > 0) {
       localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(sessions));
+      
+      // Debounced sync to Supabase
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+
+      syncTimeoutRef.current = setTimeout(async () => {
+        if (userId && activeSessionId) {
+          const activeSession = sessions.find(s => s.id === activeSessionId);
+          if (activeSession && activeSession.messages.length > 1) {
+            await syncChatSession(userId, {
+              id: activeSession.id,
+              title: activeSession.title,
+              messages: activeSession.messages,
+            });
+          }
+        }
+      }, 3000); // Sync after 3 seconds of inactivity
     }
-  }, [sessions]);
+
+    return () => {
+      if (syncTimeoutRef.current) {
+        clearTimeout(syncTimeoutRef.current);
+      }
+    };
+  }, [sessions, userId, activeSessionId]);
 
   // Auto-scroll
   useEffect(() => {

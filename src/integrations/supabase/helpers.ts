@@ -32,6 +32,14 @@ type GoalTransaction = Database['public']['Tables']['goal_transactions']['Row'];
 type GoalTransactionInsert = Database['public']['Tables']['goal_transactions']['Insert'];
 
 // =====================================================
+// HELPER: Get current user
+// =====================================================
+export async function getCurrentUser() {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  return { user, error };
+}
+
+// =====================================================
 // PROFILE OPERATIONS
 // =====================================================
 
@@ -415,6 +423,278 @@ export async function getUserDashboardData(userId: string) {
       goals: goalsResult.error,
     }
   };
+}
+
+// =====================================================
+// COMPREHENSIVE DATA SYNC & BATCH OPERATIONS
+// =====================================================
+
+/**
+ * Sync chat session and all messages to Supabase
+ * Creates or updates conversation and persists all messages
+ */
+export async function syncChatSession(userId: string, sessionData: {
+  id: string;
+  title: string;
+  messages: Array<{ id: string; role: 'user' | 'assistant'; content: string; timestamp: string }>;
+}) {
+  try {
+    // First, check if conversation exists
+    const { data: existingConv, error: checkError } = await supabase
+      .from('chat_conversations')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('id', sessionData.id)
+      .single();
+
+    let conversationId = existingConv?.id;
+    let convError = null;
+
+    if (!existingConv) {
+      // Create new conversation
+      const { data: newConv, error } = await supabase
+        .from('chat_conversations')
+        .insert({
+          id: sessionData.id,
+          user_id: userId,
+          title: sessionData.title,
+          created_at: new Date().toISOString(),
+          last_updated: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      conversationId = newConv?.id;
+      convError = error;
+    } else {
+      // Update conversation title and timestamp
+      await supabase
+        .from('chat_conversations')
+        .update({
+          title: sessionData.title,
+          last_updated: new Date().toISOString(),
+        })
+        .eq('id', sessionData.id)
+        .eq('user_id', userId);
+    }
+
+    if (convError) {
+      console.error('Error creating/updating conversation:', convError);
+      return { success: false, error: convError };
+    }
+
+    // Get existing messages to avoid duplicates
+    const { data: existingMessages } = await supabase
+      .from('chat_messages')
+      .select('id')
+      .eq('conversation_id', conversationId);
+
+    const existingMessageIds = new Set(existingMessages?.map(m => m.id) || []);
+
+    // Filter and persist only new messages
+    const newMessages = sessionData.messages
+      .filter(m => !existingMessageIds.has(m.id))
+      .map((m, index) => ({
+        id: m.id,
+        conversation_id: conversationId,
+        user_id: userId,
+        role: m.role,
+        content: m.content,
+        message_index: index,
+        created_at: m.timestamp,
+      }));
+
+    if (newMessages.length > 0) {
+      const { error: msgError } = await supabase
+        .from('chat_messages')
+        .insert(newMessages);
+
+      if (msgError) {
+        console.error('Error saving messages:', msgError);
+        return { success: false, error: msgError };
+      }
+    }
+
+    return { success: true, conversationId };
+  } catch (error) {
+    console.error('Error syncing chat session:', error);
+    return { success: false, error };
+  }
+}
+
+/**
+ * Retrieve complete chat session from Supabase
+ */
+export async function getChatSession(userId: string, conversationId: string) {
+  try {
+    const { data: conversation, error: convError } = await supabase
+      .from('chat_conversations')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('id', conversationId)
+      .single();
+
+    if (convError) {
+      return { data: null, error: convError };
+    }
+
+    const { data: messages, error: msgError } = await supabase
+      .from('chat_messages')
+      .select('*')
+      .eq('conversation_id', conversationId)
+      .order('message_index', { ascending: true });
+
+    if (msgError) {
+      return { data: null, error: msgError };
+    }
+
+    return {
+      data: {
+        ...conversation,
+        messages: messages || [],
+      },
+      error: null,
+    };
+  } catch (error) {
+    console.error('Error retrieving chat session:', error);
+    return { data: null, error };
+  }
+}
+
+/**
+ * Sync goals with user
+ */
+export async function syncGoals(userId: string, goals: Array<{
+  id?: string;
+  goal_type: string;
+  title: string;
+  description?: string;
+  target_amount?: number;
+  current_amount?: number;
+  target_date?: string;
+  status?: string;
+}>) {
+  try {
+    const goalsToInsert = goals
+      .filter(g => g.title && g.goal_type)
+      .map(g => ({
+        user_id: userId,
+        goal_type: g.goal_type,
+        title: g.title,
+        description: g.description,
+        target_amount: g.target_amount || 0,
+        current_amount: g.current_amount || 0,
+        target_date: g.target_date,
+        status: g.status || 'active',
+        started_at: new Date().toISOString(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }));
+
+    if (goalsToInsert.length === 0) {
+      return { data: [], error: null };
+    }
+
+    const { data, error } = await supabase
+      .from('goals')
+      .insert(goalsToInsert)
+      .select();
+
+    return { data, error };
+  } catch (error) {
+    console.error('Error syncing goals:', error);
+    return { data: null, error };
+  }
+}
+
+/**
+ * Add goal transaction (contribution or withdrawal)
+ */
+export async function syncGoalTransaction(userId: string, goalId: string, transaction: {
+  amount: number;
+  transaction_type: 'contribution' | 'withdrawal';
+  notes?: string;
+}) {
+  try {
+    const { data, error } = await supabase
+      .from('goal_transactions')
+      .insert({
+        goal_id: goalId,
+        user_id: userId,
+        amount: transaction.amount,
+        transaction_type: transaction.transaction_type,
+        notes: transaction.notes,
+        created_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+
+    return { data, error };
+  } catch (error) {
+    console.error('Error adding goal transaction:', error);
+    return { data: null, error };
+  }
+}
+
+/**
+ * Sync today's check-in data
+ */
+export async function syncTodayCheckIn(userId: string, checkIn: {
+  mood: 'great' | 'good' | 'okay' | 'stressed' | 'anxious';
+  spent_today: number;
+  stayed_under_budget?: boolean;
+  notes?: string;
+}) {
+  try {
+    const today = new Date().toISOString().split('T')[0];
+
+    // Check if check-in already exists for today
+    const { data: existingCheckIn } = await supabase
+      .from('check_ins')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('check_in_date', today)
+      .single();
+
+    let result;
+
+    if (existingCheckIn) {
+      // Update existing check-in
+      result = await supabase
+        .from('check_ins')
+        .update({
+          mood: checkIn.mood,
+          spent_today: checkIn.spent_today,
+          stayed_under_budget: checkIn.stayed_under_budget ?? true,
+          notes: checkIn.notes,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existingCheckIn.id)
+        .select()
+        .single();
+    } else {
+      // Create new check-in
+      result = await supabase
+        .from('check_ins')
+        .insert({
+          user_id: userId,
+          check_in_date: today,
+          mood: checkIn.mood,
+          spent_today: checkIn.spent_today,
+          stayed_under_budget: checkIn.stayed_under_budget ?? true,
+          notes: checkIn.notes,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+    }
+
+    return { data: result.data, error: result.error };
+  } catch (error) {
+    console.error('Error syncing check-in:', error);
+    return { data: null, error };
+  }
 }
 
 // =====================================================
