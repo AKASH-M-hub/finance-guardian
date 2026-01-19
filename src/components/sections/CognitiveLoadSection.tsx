@@ -164,7 +164,7 @@ const CognitiveLoadSection = () => {
             <div className="flex flex-col items-center p-4 rounded-lg bg-muted/30">
               {getBatteryIcon(cognitiveBudget.dailyTotal - cognitiveBudget.spent)}
               <p className="text-3xl font-bold mt-2">
-                <CountUpNumber end={cognitiveBudget.dailyTotal - cognitiveBudget.spent} duration={1000} />
+                <CountUpNumber value={cognitiveBudget.dailyTotal - cognitiveBudget.spent} duration={1000} />
               </p>
               <p className="text-sm text-muted-foreground">Points Available</p>
             </div>
@@ -259,7 +259,7 @@ const CognitiveLoadSection = () => {
                       progress={data.qualityScore} 
                       size={50} 
                       strokeWidth={4}
-                      color={data.qualityScore >= 70 ? 'hsl(var(--success))' : data.qualityScore >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))'}
+                      color={data.qualityScore >= 70 ? 'success' : data.qualityScore >= 50 ? 'warning' : 'danger'}
                     />
                   </div>
 
@@ -441,7 +441,7 @@ const CognitiveLoadSection = () => {
                   progress={100 - procrastinationScore.overall} 
                   size={80} 
                   strokeWidth={6}
-                  color={procrastinationScore.overall < 30 ? 'hsl(var(--success))' : procrastinationScore.overall < 60 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))'}
+                  color={procrastinationScore.overall < 30 ? 'success' : procrastinationScore.overall < 60 ? 'warning' : 'danger'}
                 />
               </div>
 

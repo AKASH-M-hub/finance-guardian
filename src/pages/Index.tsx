@@ -14,6 +14,8 @@ import EMIIntelligenceSection from '@/components/sections/EMIIntelligenceSection
 import GlobalIntelligenceSection from '@/components/sections/GlobalIntelligenceSection';
 import CommunitySupportSection from '@/components/sections/CommunitySupportSection';
 import FutureSelfProjectionSection from '@/components/sections/FutureSelfProjectionSection';
+import SocialInfluenceFirewallSection from '@/components/sections/SocialInfluenceFirewallSection';
+import CircadianCashFlowSection from '@/components/sections/CircadianCashFlowSection';
 import OnboardingForm from '@/components/onboarding/OnboardingForm';
 import AIChatbot from '@/components/chat/AIChatbot';
 import SpotlightCursor from '@/components/reactbits/SpotlightCursor';
@@ -51,6 +53,10 @@ const AppContent = () => {
         return <SubscriptionsSection />;
       case 'life-events':
         return <LifeEventsSection />;
+      case 'social-firewall':
+        return <SocialInfluenceFirewallSection />;
+      case 'circadian':
+        return <CircadianCashFlowSection />;
       case 'reports':
         return <ReportsSection />;
       default:
