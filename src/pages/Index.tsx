@@ -7,6 +7,7 @@ import BudgetSection from '@/components/sections/BudgetSection';
 import SubscriptionsSection from '@/components/sections/SubscriptionsSection';
 import LifeEventsSection from '@/components/sections/LifeEventsSection';
 import ReportsSection from '@/components/sections/ReportsSection';
+import SettingsSection from '@/components/sections/SettingsSection';
 import AICoachSection from '@/components/sections/AICoachSection';
 import AICoachChatSection from '@/components/sections/AICoachChatSection';
 import CrisisModeSection from '@/components/sections/CrisisModeSection';
@@ -16,6 +17,9 @@ import CommunitySupportSection from '@/components/sections/CommunitySupportSecti
 import FutureSelfProjectionSection from '@/components/sections/FutureSelfProjectionSection';
 import SocialInfluenceFirewallSection from '@/components/sections/SocialInfluenceFirewallSection';
 import CircadianCashFlowSection from '@/components/sections/CircadianCashFlowSection';
+import PrivacyTrustSection from '@/components/sections/PrivacyTrustSection';
+import QuantumSimulatorSection from '@/components/sections/QuantumSimulatorSection';
+import CognitiveLoadSection from '@/components/sections/CognitiveLoadSection';
 import { FinancialIdentitySection } from '@/components/sections/FinancialIdentitySection';
 import { IntergenerationalSection } from '@/components/sections/IntergenerationalSection';
 import { DecisionFatigueSection } from '@/components/sections/DecisionFatigueSection';
@@ -78,8 +82,16 @@ const AppContent = () => {
         return <FinancialRecoverySection />;
       case 'regret-prevention':
         return <RegretPreventionSection />;
+      case 'privacy-trust':
+        return <PrivacyTrustSection />;
+      case 'quantum-simulator':
+        return <QuantumSimulatorSection />;
+      case 'cognitive-load':
+        return <CognitiveLoadSection />;
       case 'reports':
         return <ReportsSection />;
+      case 'settings':
+        return <SettingsSection />;
       default:
         return <DashboardSection />;
     }

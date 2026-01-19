@@ -397,7 +397,7 @@ const AICoachChatSection: React.FC = () => {
         </Card>
 
         {/* Main Chat Area */}
-        <GlowCard className="lg:col-span-3 flex flex-col h-[600px]">
+        <GlowCard className="lg:col-span-3 flex flex-col min-h-[70vh] h-auto">
           <CardHeader className="pb-2 border-b">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
