@@ -27,9 +27,9 @@ import { useUserProfile } from '@/contexts/UserProfileContext';
 import type { QuantumBudgetState, FinancialEntanglement, QuantumTunnelingPath, ParallelReality, CollapsePredictor } from '@/types/quantum';
 
 const QuantumSimulatorSection = () => {
-  const { userInputs, analysis } = useUserProfile();
-  const monthlyIncome = userInputs?.monthlyIncome || 50000;
-  const monthlyExpenses = userInputs?.monthlyExpenses || 35000;
+  const { profile, analysis } = useUserProfile();
+  const monthlyIncome = 50000;
+  const monthlyExpenses = 35000;
 
   const [observedBudget, setObservedBudget] = useState<string | null>(null);
   const [simulationRuns, setSimulationRuns] = useState(0);
@@ -203,9 +203,9 @@ const QuantumSimulatorSection = () => {
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
             {budgetStates.map((state) => (
-              <InteractiveCard 
+              <div 
                 key={state.id}
-                className={`p-4 cursor-pointer transition-all ${
+                className={`p-4 cursor-pointer transition-all rounded-xl border border-border/50 bg-card ${
                   observedBudget === state.id 
                     ? 'ring-2 ring-primary bg-primary/5' 
                     : 'opacity-80 hover:opacity-100'
@@ -243,14 +243,14 @@ const QuantumSimulatorSection = () => {
                     <span className="text-xs">In superposition...</span>
                   </div>
                 )}
-              </InteractiveCard>
+              </div>
             ))}
           </div>
 
           {observedBudget && (
             <div className="mt-4 flex justify-center">
               <RippleButton 
-                variant="outline" 
+                variant="secondary" 
                 onClick={() => setObservedBudget(null)}
               >
                 <RefreshCw className="h-4 w-4 mr-2" />
@@ -297,7 +297,7 @@ const QuantumSimulatorSection = () => {
                           progress={ent.correlationStrength * 100} 
                           size={60} 
                           strokeWidth={4}
-                          color="hsl(var(--primary))"
+                          color="primary"
                         />
                         <Zap className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-4 w-4 text-primary" />
                       </div>
@@ -475,7 +475,7 @@ const QuantumSimulatorSection = () => {
                         progress={prediction.probability * 100} 
                         size={50} 
                         strokeWidth={4}
-                        color={prediction.probability >= 0.6 ? 'hsl(var(--success))' : prediction.probability >= 0.4 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))'}
+                        color={prediction.probability >= 0.6 ? 'success' : prediction.probability >= 0.4 ? 'warning' : 'danger'}
                       />
                     </div>
                   </div>

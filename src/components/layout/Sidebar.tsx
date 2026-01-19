@@ -15,7 +15,9 @@ import {
   Globe,
   MessageCircle,
   Users,
-  Clock
+  Clock,
+  ShieldBan,
+  Activity
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -39,6 +41,8 @@ const Sidebar = ({ activeTab, onTabChange, isOpen = true, onClose }: SidebarProp
     { id: 'budget', label: 'Budget Guardrails', icon: Shield },
     { id: 'subscriptions', label: 'Subscriptions', icon: CreditCard },
     { id: 'life-events', label: 'Life Events', icon: Calendar },
+    { id: 'social-firewall', label: 'Social Firewall', icon: ShieldBan },
+    { id: 'circadian', label: 'Circadian Flow', icon: Activity },
     { id: 'reports', label: 'Reports', icon: FileText },
   ];
 

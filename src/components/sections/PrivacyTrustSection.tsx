@@ -136,7 +136,7 @@ const PrivacyTrustSection = () => {
               progress={privacyScore} 
               size={100} 
               strokeWidth={8}
-              color={privacyScore >= 80 ? 'hsl(var(--success))' : privacyScore >= 50 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))'}
+              color={privacyScore >= 80 ? 'success' : privacyScore >= 50 ? 'warning' : 'danger'}
             />
             <p className="text-xs text-muted-foreground mt-2">
               {privacyScore >= 80 ? 'Excellent Protection' : privacyScore >= 50 ? 'Good Protection' : 'Review Settings'}
@@ -317,7 +317,7 @@ const PrivacyTrustSection = () => {
                       {category.isProtected ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
                     </Button>
                     <RippleButton
-                      variant={category.isIncognito ? "default" : "outline"}
+                      variant={category.isIncognito ? "primary" : "secondary"}
                       size="sm"
                       onClick={() => toggleIncognito(category.id)}
                     >
@@ -425,11 +425,11 @@ const PrivacyTrustSection = () => {
                   Download all your data in your preferred format
                 </p>
                 <div className="flex gap-2">
-                  <RippleButton variant="outline" className="flex-1">
+                  <RippleButton variant="secondary" className="flex-1">
                     <Download className="h-4 w-4 mr-2" />
                     Export JSON
                   </RippleButton>
-                  <RippleButton variant="outline" className="flex-1">
+                  <RippleButton variant="secondary" className="flex-1">
                     <Download className="h-4 w-4 mr-2" />
                     Export CSV
                   </RippleButton>
@@ -448,7 +448,7 @@ const PrivacyTrustSection = () => {
                 <p className="text-sm text-muted-foreground">
                   Permanently delete all your data from our servers
                 </p>
-                <RippleButton variant="destructive" className="w-full">
+                <RippleButton variant="danger" className="w-full">
                   <Trash2 className="h-4 w-4 mr-2" />
                   Delete All Data
                 </RippleButton>
