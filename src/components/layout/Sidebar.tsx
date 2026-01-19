@@ -17,7 +17,10 @@ import {
   Users,
   Clock,
   ShieldBan,
-  Activity
+  Activity,
+  TrendingUp,
+  Heart,
+  Sparkles
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -46,6 +49,9 @@ const Sidebar = ({ activeTab, onTabChange, isOpen = true, onClose }: SidebarProp
     { id: 'financial-identity', label: 'Financial Identity', icon: Shield },
     { id: 'intergenerational', label: 'Pattern Breaker', icon: Users },
     { id: 'decision-fatigue', label: 'Decision Fatigue', icon: Brain },
+    { id: 'lifestyle-inflation', label: 'Lifestyle Inflation', icon: TrendingUp },
+    { id: 'emotional-spending', label: 'Emotional Spending', icon: Heart },
+    { id: 'financial-recovery', label: 'Recovery Engine', icon: Sparkles },
     { id: 'reports', label: 'Reports', icon: FileText },
   ];
 
