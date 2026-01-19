@@ -43,6 +43,9 @@ const Sidebar = ({ activeTab, onTabChange, isOpen = true, onClose }: SidebarProp
     { id: 'life-events', label: 'Life Events', icon: Calendar },
     { id: 'social-firewall', label: 'Social Firewall', icon: ShieldBan },
     { id: 'circadian', label: 'Circadian Flow', icon: Activity },
+    { id: 'financial-identity', label: 'Financial Identity', icon: Shield },
+    { id: 'intergenerational', label: 'Pattern Breaker', icon: Users },
+    { id: 'decision-fatigue', label: 'Decision Fatigue', icon: Brain },
     { id: 'reports', label: 'Reports', icon: FileText },
   ];
 
