@@ -16,6 +16,9 @@ import CommunitySupportSection from '@/components/sections/CommunitySupportSecti
 import FutureSelfProjectionSection from '@/components/sections/FutureSelfProjectionSection';
 import SocialInfluenceFirewallSection from '@/components/sections/SocialInfluenceFirewallSection';
 import CircadianCashFlowSection from '@/components/sections/CircadianCashFlowSection';
+import { FinancialIdentitySection } from '@/components/sections/FinancialIdentitySection';
+import { IntergenerationalSection } from '@/components/sections/IntergenerationalSection';
+import { DecisionFatigueSection } from '@/components/sections/DecisionFatigueSection';
 import OnboardingForm from '@/components/onboarding/OnboardingForm';
 import AIChatbot from '@/components/chat/AIChatbot';
 import SpotlightCursor from '@/components/reactbits/SpotlightCursor';
@@ -57,6 +60,12 @@ const AppContent = () => {
         return <SocialInfluenceFirewallSection />;
       case 'circadian':
         return <CircadianCashFlowSection />;
+      case 'financial-identity':
+        return <FinancialIdentitySection />;
+      case 'intergenerational':
+        return <IntergenerationalSection />;
+      case 'decision-fatigue':
+        return <DecisionFatigueSection />;
       case 'reports':
         return <ReportsSection />;
       default:
