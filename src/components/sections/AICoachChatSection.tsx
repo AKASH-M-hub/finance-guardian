@@ -179,8 +179,8 @@ const AICoachChatSection: React.FC = () => {
 
     try {
       // Build personalized system context from user profile
-      const hasProfile = profile && (profile.age || profile.incomeRange);
-      const hasAnalysis = analysis && (analysis.monthlyBudget || analysis.savingsRate);
+      const hasProfile = profile && (profile.monthlyIncomeRange || profile.incomeType);
+      const hasAnalysis = analysis && (analysis.weeklyBudget || analysis.dailyBudget);
       const hasGoals = goals.length > 0;
 
       let systemPrompt = '';
@@ -188,17 +188,17 @@ const AICoachChatSection: React.FC = () => {
       if (hasProfile || hasAnalysis || hasGoals) {
         // User has data - provide personalized coaching
         const userData = [];
-        if (profile?.name) userData.push(`Name: ${profile.name}`);
-        if (profile?.age) userData.push(`Age: ${profile.age}`);
-        if (profile?.incomeRange) userData.push(`Income: ${profile.incomeRange}`);
-        if (analysis?.riskProfile) userData.push(`Risk Profile: ${analysis.riskProfile}`);
-        if (analysis?.monthlyBudget) userData.push(`Monthly Budget: $${analysis.monthlyBudget}`);
-        if (analysis?.savingsRate) userData.push(`Savings Rate: ${analysis.savingsRate}%`);
-        if (analysis?.totalDebt) userData.push(`Total Debt: $${analysis.totalDebt}`);
-        if (analysis?.monthlyExpenses) userData.push(`Monthly Expenses: $${analysis.monthlyExpenses}`);
-        if (analysis?.emergencyFundMonths) userData.push(`Emergency Fund: ${analysis.emergencyFundMonths} months`);
-        if (hasGoals) userData.push(`Goals: ${goals.map(g => `${g.name} (${g.progress}/${g.target})`).join(', ')}`);
-        if (analysis?.stressSignals?.length) userData.push(`Stress Signals: ${analysis.stressSignals.map(s => s.type).join(', ')}`);
+        if (profile?.monthlyIncomeRange) userData.push(`Income Range: ${profile.monthlyIncomeRange}`);
+        if (profile?.incomeType) userData.push(`Income Type: ${profile.incomeType}`);
+        if (profile?.spendingStyle) userData.push(`Spending Style: ${profile.spendingStyle}`);
+        if (analysis?.riskLevel) userData.push(`Risk Level: ${analysis.riskLevel}`);
+        if (analysis?.weeklyBudget) userData.push(`Weekly Budget: ₹${analysis.weeklyBudget}`);
+        if (analysis?.dailyBudget) userData.push(`Daily Budget: ₹${analysis.dailyBudget}`);
+        if (analysis?.stressScore) userData.push(`Stress Score: ${analysis.stressScore}%`);
+        if (analysis?.survivalDays) userData.push(`Survival Days: ${analysis.survivalDays}`);
+        if (analysis?.silentBurdenIndex) userData.push(`Silent Burden: ${analysis.silentBurdenIndex}%`);
+        if (hasGoals) userData.push(`Goals: ${goals.map(g => `${g.title} (₹${g.currentAmount}/₹${g.targetAmount})`).join(', ')}`);
+        if (analysis?.activeSignals?.length) userData.push(`Stress Signals: ${analysis.activeSignals.map(s => s.type).join(', ')}`);
         
         systemPrompt = `You are a helpful AI financial assistant. Answer the user's question directly and concisely.
 
