@@ -39,8 +39,10 @@ import {
   Share2,
   Target,
   Sparkles,
-  Gift
+  Gift,
+  Trash2
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 // Mock community data
 const communityTips: CommunityTip[] = [
@@ -423,6 +425,28 @@ const CommunitySupportSection: React.FC = () => {
                 </ShimmerButton>
               </div>
               
+              {/* SOS Alert Feature */}
+              <Alert className="border-destructive/50 bg-destructive/10 mb-4">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                <AlertTitle>Send SOS Alert</AlertTitle>
+                <AlertDescription className="flex items-center justify-between">
+                  <span>Notify your trusted contacts that you need financial support</span>
+                  <Button 
+                    variant="destructive" 
+                    size="sm"
+                    onClick={() => {
+                      if (trustedContacts.length === 0) {
+                        toast.error('Please add at least one trusted contact first');
+                        return;
+                      }
+                      toast.success(`SOS alert sent to ${trustedContacts.length} contact(s)!`);
+                    }}
+                  >
+                    Send SOS
+                  </Button>
+                </AlertDescription>
+              </Alert>
+
               {trustedContacts.length > 0 ? (
                 <div className="space-y-2">
                   {trustedContacts.map((contact) => (

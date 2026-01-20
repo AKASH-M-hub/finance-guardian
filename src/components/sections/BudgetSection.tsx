@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { BudgetGuardrail } from '@/types/finance';
+import { BudgetGuardrail, TransactionCategory } from '@/types/finance';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { mockBudgetGuardrails, categoryIcons } from '@/data/mockData';
 import { cn } from '@/lib/utils';
 import { 
@@ -25,6 +26,9 @@ const BudgetSection = () => {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValue, setEditValue] = useState('');
   const [lockedCategories, setLockedCategories] = useState<string[]>(['food', 'travel']);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategory, setNewCategory] = useState<TransactionCategory>('other');
+  const [newCategoryLimit, setNewCategoryLimit] = useState('');
 
   const startEdit = (category: string, currentLimit: number) => {
     setEditingId(category);
@@ -78,7 +82,7 @@ const BudgetSection = () => {
             Set limits and protect your essential spending
           </p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={() => setShowAddCategory(true)}>
           <Plus className="h-4 w-4" />
           Add Category
         </Button>
@@ -113,6 +117,81 @@ const BudgetSection = () => {
           </p>
         </CardContent>
       </Card>
+
+      {/* Add Category Form */}
+      {showAddCategory && (
+        <Card className="border-primary/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Add New Category</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Select
+                value={newCategory}
+                onValueChange={(v) => setNewCategory(v as TransactionCategory)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {(['food', 'travel', 'shopping', 'entertainment', 'bills', 'emi', 'subscription', 'health', 'groceries', 'fuel', 'other'] as TransactionCategory[])
+                    .filter(cat => !guardrails.some(g => g.category === cat))
+                    .map((cat) => (
+                      <SelectItem key={cat} value={cat} className="capitalize">
+                        {categoryIcons[cat] || '📦'} {cat}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="number"
+                placeholder="Monthly limit (e.g., 5000)"
+                value={newCategoryLimit}
+                onChange={(e) => setNewCategoryLimit(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                onClick={() => {
+                  if (!newCategoryLimit) {
+                    toast.error('Please enter a limit amount');
+                    return;
+                  }
+                  const limit = parseInt(newCategoryLimit);
+                  if (isNaN(limit) || limit <= 0) {
+                    toast.error('Please enter a valid limit amount');
+                    return;
+                  }
+                  if (guardrails.some(g => g.category === newCategory)) {
+                    toast.error('This category already exists');
+                    return;
+                  }
+                  setGuardrails(prev => [...prev, {
+                    category: newCategory,
+                    limit: limit,
+                    spent: 0
+                  }]);
+                  setNewCategory('other');
+                  setNewCategoryLimit('');
+                  setShowAddCategory(false);
+                  toast.success(`Category "${newCategory}" added with ₹${limit.toLocaleString()} limit`);
+                }}
+                className="gap-2"
+              >
+                <Check className="h-4 w-4" />
+                Add Category
+              </Button>
+              <Button variant="ghost" onClick={() => {
+                setShowAddCategory(false);
+                setNewCategory('other');
+                setNewCategoryLimit('');
+              }}>
+                Cancel
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Essential Protection */}
       <Card className="border-primary/30 bg-primary/5">
