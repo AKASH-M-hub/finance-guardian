@@ -34,9 +34,18 @@ import { UserProfileProvider, useUserProfile } from '@/contexts/UserProfileConte
 
 const AppContent = () => {
   const { isOnboarded } = useUserProfile();
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // Persist activeTab in localStorage to survive page refresh
+  const [activeTab, setActiveTab] = useState(() => {
+    const saved = localStorage.getItem('fyf_active_tab');
+    return saved || 'dashboard';
+  });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(!isOnboarded);
+  
+  // Save activeTab to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('fyf_active_tab', activeTab);
+  }, [activeTab]);
 
   const renderContent = () => {
     switch (activeTab) {
