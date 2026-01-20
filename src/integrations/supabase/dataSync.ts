@@ -1,17 +1,6 @@
 /**
  * Comprehensive Data Sync Service for FYF
  * Ensures all tables are properly populated with user data
- * 
- * Tables covered:
- * ✓ profiles - User financial profile
- * ✓ financial_analysis - Stress scores, health metrics
- * ✓ active_signals - Financial alerts
- * ✓ recommendations - AI recommendations
- * ✓ chat_conversations - Chat sessions
- * ✓ chat_messages - Individual messages
- * ✓ check_ins - Daily mood & spending check-ins
- * ✓ goals - Financial goals
- * ✓ goal_transactions - Goal contributions/withdrawals
  */
 
 import {
@@ -36,7 +25,7 @@ export interface SyncOptions {
  * Main data sync function to ensure all user data is properly stored
  */
 export async function syncAllUserData(options: SyncOptions) {
-  const { userId, syncChat = true, syncGoals = true, syncCheckIns = true } = options;
+  const { userId, syncChat = true, syncGoals: doSyncGoals = true, syncCheckIns = true } = options;
   
   const results = {
     success: false,
@@ -51,7 +40,6 @@ export async function syncAllUserData(options: SyncOptions) {
   };
 
   try {
-    // Verify user has data to sync
     console.log(`[DataSync] Starting comprehensive sync for user: ${userId}`);
 
     // 1. Sync Chat Sessions (from localStorage)
@@ -87,7 +75,7 @@ export async function syncAllUserData(options: SyncOptions) {
       const { data: analysis } = await getCurrentAnalysis(userId);
       if (analysis) {
         results.synced.analysis = true;
-        console.log(`[DataSync] ✓ Financial analysis found: Stress=${analysis.stress_score}`);
+        console.log(`[DataSync] ✓ Financial analysis found: Stress=${(analysis as any).stress_score}`);
       }
     } catch (error) {
       const err = `Analysis retrieval failed: ${error instanceof Error ? error.message : String(error)}`;
@@ -96,7 +84,7 @@ export async function syncAllUserData(options: SyncOptions) {
     }
 
     // 3. Sync Goals
-    if (syncGoals) {
+    if (doSyncGoals) {
       try {
         const { data: goals } = await getActiveGoals(userId);
         if (goals && goals.length > 0) {
@@ -161,7 +149,6 @@ export async function getDataSyncStatus(userId: string) {
   };
 
   try {
-    // Check each table
     const { data: analysis } = await getCurrentAnalysis(userId);
     if (analysis) {
       status.tables.financial_analysis.synced = true;

@@ -12,19 +12,10 @@ import {
 } from '@/types/userProfile';
 import { supabase } from '@/integrations/supabase/client';
 import { 
-  getProfile, 
-  createProfile, 
-  getCurrentAnalysis, 
-  createAnalysis,
-  getRecentCheckIns,
-  createCheckIn,
-  getActiveGoals,
-  createGoal,
   syncTodayCheckIn,
   syncGoals,
   syncGoalTransaction,
 } from '@/integrations/supabase/helpers';
-import { mapDbProfile, mapDbAnalysis } from '@/integrations/supabase/import';
 import { useToast } from '@/hooks/use-toast';
 
 interface UserProfileContextType {
@@ -64,36 +55,67 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
       if (!session?.user) return;
 
       try {
-        const profileResult = await getProfile(session.user.id);
-        if (profileResult.data) {
-          const hydratedProfile = mapDbProfile(profileResult.data);
+        // Fetch profile
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single();
+        
+        if (profileData && !profileError) {
+          const hydratedProfile = mapDbToProfile(profileData);
           setProfileState(hydratedProfile);
 
-          const analysisResult = await getCurrentAnalysis(session.user.id);
-          if (analysisResult.data) {
-            setAnalysis(mapDbAnalysis(analysisResult.data));
+          // Fetch current analysis
+          const { data: analysisData } = await supabase
+            .from('financial_analysis')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .eq('is_current', true)
+            .order('analyzed_at', { ascending: false })
+            .limit(1)
+            .single();
+
+          if (analysisData) {
+            setAnalysis(mapDbToAnalysis(analysisData));
           }
 
-          const checkInsResult = await getRecentCheckIns(session.user.id);
-          if (checkInsResult.data) {
-            setCheckIns(checkInsResult.data.map(ci => ({
+          // Fetch recent check-ins
+          const { data: checkInsData } = await supabase
+            .from('check_ins')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .order('check_in_date', { ascending: false })
+            .limit(30);
+
+          if (checkInsData) {
+            setCheckIns(checkInsData.map((ci: any) => ({
               id: ci.id,
               date: ci.check_in_date,
-              moodScore: ci.mood_score,
-              spendingControl: ci.spending_control,
+              mood: ci.mood,
+              spentToday: ci.spent_today || 0,
+              stayedUnderBudget: ci.stayed_under_budget ?? true,
               notes: ci.notes || undefined
             })));
           }
 
-          const goalsResult = await getActiveGoals(session.user.id);
-          if (goalsResult.data) {
-            setGoals(goalsResult.data.map(g => ({
+          // Fetch active goals
+          const { data: goalsData } = await supabase
+            .from('goals')
+            .select('*')
+            .eq('user_id', session.user.id)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false });
+
+          if (goalsData) {
+            setGoals(goalsData.map((g: any) => ({
               id: g.id,
               title: g.title,
-              targetAmount: g.target_amount,
-              currentAmount: g.current_amount,
-              deadline: g.deadline,
-              category: g.category as UserGoal['category']
+              targetAmount: g.target_amount || 0,
+              currentAmount: g.current_amount || 0,
+              deadline: g.target_date || new Date().toISOString(),
+              category: mapGoalCategory(g.goal_type),
+              microGoals: [],
             })));
           }
         }
@@ -121,92 +143,78 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
     if (!session?.user) return;
 
     try {
-      const existingProfile = await getProfile(session.user.id);
-      
-      const moneyFeelingMap: Record<string, any> = {
-        calm: 'comfortable',
-        slightly_worried: 'slightly_worried',
-        often_stressed: 'very_stressed',
-        avoid_checking: 'crisis_mode',
-      };
-
-      const reachZeroMap: Record<string, any> = {
-        never: 'never',
-        sometimes: 'sometimes',
-        often: 'often',
-      };
-
-      const emergencyMap: Record<string, any> = {
-        can_handle: 'can_handle',
-        will_struggle: 'will_struggle',
-        need_to_borrow: 'no_safety_net',
-      };
-
-      const topImpulseMap: Record<string, any> = {
-        food_delivery: 'food_delivery',
-        shopping: 'shopping',
-        travel: 'travel',
-        online_services: 'entertainment',
-      };
+      // Check if profile exists
+      const { data: existingProfile } = await (supabase
+        .from('profiles') as any)
+        .select('id')
+        .eq('id', session.user.id)
+        .single();
 
       const profilePayload = {
         id: session.user.id,
         monthly_income_range: updatedProfile.monthlyIncomeRange,
         income_type: updatedProfile.incomeType,
         country: updatedProfile.country || 'India',
-        commitments: updatedProfile.commitments,
+        commitments: updatedProfile.commitments as string[],
         total_fixed_amount: updatedProfile.totalFixedAmount,
         spending_style: updatedProfile.spendingStyle,
         overspend_trigger: updatedProfile.overspendTrigger,
-        top_impulse_category: topImpulseMap[updatedProfile.topImpulseCategory] || 'shopping',
-        money_feeling: moneyFeelingMap[updatedProfile.moneyFeeling] || 'comfortable',
-        reach_zero_frequency: reachZeroMap[updatedProfile.reachZeroFrequency] || 'never',
-        emergency_readiness: emergencyMap[updatedProfile.emergencyReadiness] || 'will_struggle',
-        life_situation: updatedProfile.lifeSituation || 'none',
-        planned_purchase: updatedProfile.plannedPurchase || 'none',
+        top_impulse_category: mapImpulseCategoryToDb(updatedProfile.topImpulseCategory),
+        money_feeling: mapMoneyFeelingToDb(updatedProfile.moneyFeeling),
+        reach_zero_frequency: mapZeroFrequencyToDb(updatedProfile.reachZeroFrequency),
+        emergency_readiness: mapEmergencyReadinessToDb(updatedProfile.emergencyReadiness),
+        life_situation: mapLifeSituationToDb(updatedProfile.lifeSituation),
+        planned_purchase: mapPlannedPurchaseToDb(updatedProfile.plannedPurchase),
         ai_help_level: updatedProfile.aiHelpLevel || 'only_insights',
         is_onboarded: true,
       };
 
-      if (existingProfile.data) {
-        await supabase.from('profiles').update(profilePayload).eq('user_id', session.user.id);
+      if (existingProfile) {
+        await (supabase.from('profiles') as any).update(profilePayload).eq('id', session.user.id);
       } else {
-        await createProfile(profilePayload);
+        await (supabase.from('profiles') as any).insert(profilePayload);
       }
 
       const computedAnalysis = computeFinancialAnalysis(updatedProfile);
-      const riskLevelMap: Record<string, any> = {
-        safe: 'safe',
-        watch: 'caution',
-        crisis: 'crisis',
-      };
+      
+      // Mark old analysis as not current
+      await (supabase
+        .from('financial_analysis') as any)
+        .update({ is_current: false })
+        .eq('user_id', session.user.id)
+        .eq('is_current', true);
 
-      const analysisPayload = {
-        user_id: session.user.id,
-        stress_score: computedAnalysis.stressScore,
-        risk_level: riskLevelMap[computedAnalysis.riskLevel] || 'caution',
-        silent_burden_index: computedAnalysis.silentBurdenIndex,
-        survival_days: computedAnalysis.survivalDays,
-        debt_risk: computedAnalysis.debtRisk,
-        emergency_fund_target: computedAnalysis.emergencyFundTarget,
-        weekly_budget: computedAnalysis.weeklyBudget,
-        daily_budget: computedAnalysis.dailyBudget,
-        recovery_days: computedAnalysis.recoveryDays,
-        health_score: computedAnalysis.healthScore,
-        is_current: true,
-        analyzed_at: new Date().toISOString(),
-      };
+      // Insert new analysis
+      const { data: analysisData } = await (supabase
+        .from('financial_analysis') as any)
+        .insert({
+          user_id: session.user.id,
+          stress_score: computedAnalysis.stressScore,
+          risk_level: mapRiskLevelToDb(computedAnalysis.riskLevel),
+          silent_burden_index: computedAnalysis.silentBurdenIndex,
+          survival_days: computedAnalysis.survivalDays,
+          debt_risk: computedAnalysis.debtRisk,
+          emergency_fund_target: computedAnalysis.emergencyFundTarget,
+          weekly_budget: computedAnalysis.weeklyBudget,
+          daily_budget: computedAnalysis.dailyBudget,
+          recovery_days: computedAnalysis.recoveryDays,
+          health_score: computedAnalysis.healthScore,
+          is_current: true,
+          analyzed_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
 
-      const analysisResult = await createAnalysis(analysisPayload);
-      const analysisId = analysisResult.data?.id;
+      if (analysisData) {
+        const analysisId = analysisData.id;
 
-      if (analysisId) {
+        // Insert signals
         const signalsPayload = (computedAnalysis.activeSignals || []).map(s => ({
           analysis_id: analysisId,
           user_id: session.user.id,
           signal_id: s.id,
           signal_type: s.type,
-          severity: s.severity,
+          severity: mapSeverityToDb(s.severity),
           title: s.title,
           description: s.description,
           actionable: s.actionable,
@@ -215,14 +223,15 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
         }));
 
         if (signalsPayload.length) {
-          await supabase.from('active_signals').insert(signalsPayload);
+          await (supabase.from('active_signals') as any).insert(signalsPayload);
         }
 
+        // Insert recommendations
         const recommendationsPayload = (computedAnalysis.recommendations || []).map(r => ({
           analysis_id: analysisId,
           user_id: session.user.id,
           recommendation_id: r.id,
-          priority: r.priority,
+          priority: mapPriorityToDb(r.priority),
           title: r.title,
           description: r.description,
           action: r.action,
@@ -232,7 +241,7 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
         }));
 
         if (recommendationsPayload.length) {
-          await supabase.from('recommendations').insert(recommendationsPayload);
+          await (supabase.from('recommendations') as any).insert(recommendationsPayload);
         }
       }
 
@@ -260,7 +269,6 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
     if (!session?.user) return;
 
     try {
-      // Use new sync function that properly handles check-ins
       const result = await syncTodayCheckIn(session.user.id, {
         mood: checkIn.mood || 'okay',
         spent_today: checkIn.spentToday || 0,
@@ -277,10 +285,9 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
           stayedUnderBudget: result.data.stayed_under_budget,
           notes: result.data.notes || undefined
         };
-        setCheckIns(prev => [newCheckIn, ...prev]);
+        setCheckIns(prev => [newCheckIn, ...prev.filter(c => c.id !== newCheckIn.id)]);
       }
 
-      // Update streaks
       if (checkIn.stayedUnderBudget) {
         updateStreak('under_budget');
       }
@@ -310,9 +317,8 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
     if (!session?.user) return;
 
     try {
-      // Sync goals to Supabase
       const syncResult = await syncGoals(session.user.id, [{
-        goal_type: goal.category,
+        goal_type: mapGoalCategoryToDb(goal.category),
         title: goal.title,
         target_amount: goal.targetAmount,
         current_amount: goal.currentAmount,
@@ -325,10 +331,10 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
         const newGoal: UserGoal = {
           id: createdGoal.id,
           title: createdGoal.title,
-          targetAmount: createdGoal.target_amount,
-          currentAmount: createdGoal.current_amount,
+          targetAmount: createdGoal.target_amount || 0,
+          currentAmount: createdGoal.current_amount || 0,
           deadline: createdGoal.target_date || new Date().toISOString(),
-          category: (createdGoal.goal_type as any) || 'custom',
+          category: mapGoalCategory(createdGoal.goal_type),
           microGoals: goal.microGoals || [],
         };
         setGoals(prev => [...prev, newGoal]);
@@ -353,7 +359,6 @@ export const UserProfileProvider: React.FC<{ children: ReactNode }> = ({ childre
       return goal;
     }));
 
-    // Sync transaction to Supabase
     try {
       await syncGoalTransaction(session.user.id, goalId, {
         amount,
@@ -397,57 +402,259 @@ export const useUserProfile = () => {
   return context;
 };
 
+// Helper mapping functions
+function mapDbToProfile(db: any): UserProfile {
+  return {
+    id: db.id,
+    monthlyIncomeRange: db.monthly_income_range,
+    incomeType: db.income_type,
+    country: db.country || 'India',
+    commitments: db.commitments || [],
+    totalFixedAmount: db.total_fixed_amount || 0,
+    spendingStyle: db.spending_style || 'mixed',
+    overspendTrigger: db.overspend_trigger || 'weekends',
+    topImpulseCategory: mapDbToImpulseCategory(db.top_impulse_category),
+    moneyFeeling: mapDbToMoneyFeeling(db.money_feeling),
+    reachZeroFrequency: mapDbToZeroFrequency(db.reach_zero_frequency),
+    emergencyReadiness: mapDbToEmergencyReadiness(db.emergency_readiness),
+    lifeSituation: mapDbToLifeSituation(db.life_situation),
+    plannedPurchase: mapDbToPlannedPurchase(db.planned_purchase),
+    aiHelpLevel: db.ai_help_level || 'only_insights',
+    isOnboarded: db.is_onboarded || false,
+    createdAt: db.created_at,
+    updatedAt: db.updated_at,
+  };
+}
+
+function mapDbToAnalysis(db: any): FinancialAnalysis {
+  return {
+    stressScore: db.stress_score || 0,
+    riskLevel: db.risk_level === 'crisis' ? 'crisis' : db.risk_level === 'safe' ? 'safe' : 'watch',
+    silentBurdenIndex: db.silent_burden_index || 0,
+    survivalDays: db.survival_days || 0,
+    debtRisk: db.debt_risk || 0,
+    emergencyFundTarget: db.emergency_fund_target || 0,
+    weeklyBudget: db.weekly_budget || 0,
+    dailyBudget: db.daily_budget || 0,
+    activeSignals: [],
+    recommendations: [],
+    recoveryDays: db.recovery_days || 0,
+    healthScore: db.health_score || 0,
+  };
+}
+
+function mapGoalCategory(dbType: string): UserGoal['category'] {
+  const mapping: Record<string, UserGoal['category']> = {
+    emergency_fund: 'emergency_fund',
+    debt_payoff: 'debt_payment',
+    savings: 'custom',
+    investment: 'custom',
+    purchase: 'purchase',
+    custom: 'custom',
+  };
+  return mapping[dbType] || 'custom';
+}
+
+function mapGoalCategoryToDb(category: UserGoal['category']): string {
+  const mapping: Record<UserGoal['category'], string> = {
+    emergency_fund: 'emergency_fund',
+    debt_payment: 'debt_payoff',
+    purchase: 'purchase',
+    travel: 'custom',
+    custom: 'custom',
+  };
+  return mapping[category] || 'custom';
+}
+
+function mapDbToImpulseCategory(db: string | null): any {
+  if (!db) return 'shopping';
+  const mapping: Record<string, any> = {
+    food_delivery: 'food_delivery',
+    shopping: 'shopping',
+    travel: 'travel',
+    entertainment: 'online_services',
+    gadgets: 'shopping',
+  };
+  return mapping[db] || 'shopping';
+}
+
+function mapImpulseCategoryToDb(cat: any): any {
+  const mapping: Record<string, any> = {
+    food_delivery: 'food_delivery',
+    shopping: 'shopping',
+    travel: 'travel',
+    online_services: 'entertainment',
+  };
+  return mapping[cat] || 'shopping';
+}
+
+function mapDbToMoneyFeeling(db: string | null): any {
+  if (!db) return 'calm';
+  const mapping: Record<string, any> = {
+    confident: 'calm',
+    comfortable: 'calm',
+    slightly_worried: 'slightly_worried',
+    very_stressed: 'often_stressed',
+    crisis_mode: 'avoid_checking',
+  };
+  return mapping[db] || 'calm';
+}
+
+function mapMoneyFeelingToDb(feeling: any): any {
+  const mapping: Record<string, any> = {
+    calm: 'comfortable',
+    slightly_worried: 'slightly_worried',
+    often_stressed: 'very_stressed',
+    avoid_checking: 'crisis_mode',
+  };
+  return mapping[feeling] || 'comfortable';
+}
+
+function mapDbToZeroFrequency(db: string | null): any {
+  if (!db) return 'never';
+  const mapping: Record<string, any> = {
+    never: 'never',
+    rarely: 'never',
+    sometimes: 'sometimes',
+    often: 'often',
+    always: 'often',
+  };
+  return mapping[db] || 'never';
+}
+
+function mapZeroFrequencyToDb(freq: any): any {
+  const mapping: Record<string, any> = {
+    never: 'never',
+    sometimes: 'sometimes',
+    often: 'often',
+  };
+  return mapping[freq] || 'never';
+}
+
+function mapDbToEmergencyReadiness(db: string | null): any {
+  if (!db) return 'can_handle';
+  const mapping: Record<string, any> = {
+    fully_covered: 'can_handle',
+    can_handle: 'can_handle',
+    will_struggle: 'will_struggle',
+    no_safety_net: 'need_to_borrow',
+  };
+  return mapping[db] || 'can_handle';
+}
+
+function mapEmergencyReadinessToDb(readiness: any): any {
+  const mapping: Record<string, any> = {
+    can_handle: 'can_handle',
+    will_struggle: 'will_struggle',
+    need_to_borrow: 'no_safety_net',
+  };
+  return mapping[readiness] || 'will_struggle';
+}
+
+function mapDbToLifeSituation(db: string | null): any {
+  if (!db) return 'none';
+  const mapping: Record<string, any> = {
+    none: 'none',
+    job_change: 'job_change',
+    new_city: 'job_change',
+    wedding_planned: 'family_responsibility',
+    family_expansion: 'family_responsibility',
+    health_concern: 'medical',
+  };
+  return mapping[db] || 'none';
+}
+
+function mapLifeSituationToDb(situation: any): any {
+  const mapping: Record<string, any> = {
+    none: 'none',
+    exams: 'none',
+    job_change: 'job_change',
+    medical: 'health_concern',
+    family_responsibility: 'family_expansion',
+  };
+  return mapping[situation] || 'none';
+}
+
+function mapDbToPlannedPurchase(db: string | null): any {
+  if (!db) return 'none';
+  const mapping: Record<string, any> = {
+    none: 'none',
+    vehicle: 'vehicle',
+    home: 'vehicle',
+    education: 'laptop',
+    wedding: 'travel',
+    gadget: 'phone',
+  };
+  return mapping[db] || 'none';
+}
+
+function mapPlannedPurchaseToDb(purchase: any): any {
+  const mapping: Record<string, any> = {
+    none: 'none',
+    phone: 'gadget',
+    laptop: 'education',
+    vehicle: 'vehicle',
+    travel: 'wedding',
+  };
+  return mapping[purchase] || 'none';
+}
+
+function mapRiskLevelToDb(level: 'safe' | 'watch' | 'crisis'): any {
+  const mapping: Record<string, any> = {
+    safe: 'safe',
+    watch: 'caution',
+    crisis: 'crisis',
+  };
+  return mapping[level] || 'caution';
+}
+
+function mapSeverityToDb(severity: 'low' | 'medium' | 'high'): any {
+  return severity;
+}
+
+function mapPriorityToDb(priority: 'high' | 'medium' | 'low'): any {
+  return priority;
+}
+
 // Analysis computation functions
 function computeFinancialAnalysis(profile: UserProfile): FinancialAnalysis {
   const incomeRange = incomeRangeToNumber(profile.monthlyIncomeRange);
   const monthlyIncome = incomeRange.avg;
   
-  // Calculate Silent Burden Index
   const silentBurdenIndex = Math.min(100, Math.round((profile.totalFixedAmount / monthlyIncome) * 100));
   
-  // Base stress score calculation
-  let stressScore = 20; // Base score
+  let stressScore = 20;
   
-  // Add stress based on burden
   stressScore += Math.min(30, silentBurdenIndex * 0.4);
   
-  // Add stress based on spending style
   if (profile.spendingStyle === 'mostly_impulsive') stressScore += 15;
   else if (profile.spendingStyle === 'mixed') stressScore += 8;
   
-  // Add stress based on money feeling
   if (profile.moneyFeeling === 'avoid_checking') stressScore += 20;
   else if (profile.moneyFeeling === 'often_stressed') stressScore += 15;
   else if (profile.moneyFeeling === 'slightly_worried') stressScore += 8;
   
-  // Add stress based on zero balance frequency
   if (profile.reachZeroFrequency === 'often') stressScore += 20;
   else if (profile.reachZeroFrequency === 'sometimes') stressScore += 10;
   
-  // Add stress based on emergency readiness
   if (profile.emergencyReadiness === 'need_to_borrow') stressScore += 15;
   else if (profile.emergencyReadiness === 'will_struggle') stressScore += 8;
   
-  // Life situation impacts
   if (profile.lifeSituation === 'medical' || profile.lifeSituation === 'job_change') stressScore += 10;
   
   stressScore = Math.min(100, Math.round(stressScore));
   
-  // Determine risk level
   let riskLevel: 'safe' | 'watch' | 'crisis';
   if (stressScore < 35) riskLevel = 'safe';
   else if (stressScore < 65) riskLevel = 'watch';
   else riskLevel = 'crisis';
   
-  // Calculate available amount after fixed expenses
   const availableMonthly = monthlyIncome - profile.totalFixedAmount;
   const dailyBudget = Math.round(availableMonthly / 30);
   const weeklyBudget = dailyBudget * 7;
   
-  // Survival days calculation
   const survivalDays = availableMonthly > 0 ? Math.round(availableMonthly / dailyBudget) : 0;
   
-  // Debt risk calculation
   let debtRisk = 0;
   if (profile.emergencyReadiness === 'need_to_borrow') debtRisk += 40;
   if (profile.reachZeroFrequency === 'often') debtRisk += 30;
@@ -455,19 +662,14 @@ function computeFinancialAnalysis(profile: UserProfile): FinancialAnalysis {
   if (silentBurdenIndex > 60) debtRisk += 10;
   debtRisk = Math.min(100, debtRisk);
   
-  // Emergency fund target (3-6 months of expenses)
   const emergencyFundTarget = profile.totalFixedAmount * 4;
   
-  // Generate stress signals
   const activeSignals = generateStressSignals(profile, stressScore, silentBurdenIndex, debtRisk);
   
-  // Generate recommendations
   const recommendations = generateRecommendations(profile, stressScore, silentBurdenIndex);
   
-  // Recovery timeline
   const recoveryDays = stressScore > 50 ? Math.round(stressScore * 1.5) : 0;
   
-  // Health score (inverse of stress with some smoothing)
   const healthScore = Math.max(0, 100 - stressScore + (profile.spendingStyle === 'mostly_planned' ? 10 : 0));
 
   return {
@@ -500,19 +702,30 @@ function generateStressSignals(
       type: 'commitment_overload',
       severity: silentBurdenIndex > 70 ? 'high' : 'medium',
       title: 'High Fixed Expense Burden',
-      description: `${silentBurdenIndex}% of your income goes to fixed expenses. This leaves little room for flexibility.`,
-      actionable: 'Review your fixed commitments and identify any that can be reduced or eliminated.',
+      description: `${silentBurdenIndex}% of your income is locked in fixed expenses. This leaves very little flexibility.`,
+      actionable: 'Review your subscriptions and EMIs. Consider negotiating rent or consolidating debts.',
+    });
+  }
+  
+  if (profile.emergencyReadiness === 'need_to_borrow') {
+    signals.push({
+      id: 'emergency_unready',
+      type: 'emergency_unpreparedness',
+      severity: 'high',
+      title: 'No Emergency Buffer',
+      description: 'An unexpected expense would push you into debt.',
+      actionable: 'Start with saving ₹500/week for emergencies. Even small buffers help.',
     });
   }
   
   if (profile.spendingStyle === 'mostly_impulsive') {
     signals.push({
-      id: 'impulse_high',
+      id: 'impulse_risk',
       type: 'impulse_risk',
-      severity: 'high',
+      severity: 'medium',
       title: 'Impulse Spending Pattern',
-      description: 'Your spending style indicates frequent unplanned purchases.',
-      actionable: `Use the "Buy Later" feature before purchases, especially for ${profile.topImpulseCategory.replace('_', ' ')}.`,
+      description: 'Your spending style makes it harder to stick to budgets.',
+      actionable: 'Use the 24-hour rule: Wait a day before non-essential purchases over ₹500.',
     });
   }
   
@@ -520,10 +733,10 @@ function generateStressSignals(
     signals.push({
       id: 'emotional_spending',
       type: 'emotional_spending',
-      severity: profile.moneyFeeling === 'avoid_checking' ? 'high' : 'medium',
-      title: 'Financial Anxiety Detected',
-      description: 'Your relationship with money shows signs of stress avoidance.',
-      actionable: 'Try the 15-second daily check-in to build a healthier money relationship.',
+      severity: 'medium',
+      title: 'Money Anxiety Detected',
+      description: 'Financial stress can lead to avoidance or emotional spending.',
+      actionable: 'Do a quick 15-second daily check-in to stay connected without overwhelm.',
     });
   }
   
@@ -533,30 +746,8 @@ function generateStressSignals(
       type: 'zero_balance_risk',
       severity: 'high',
       title: 'Frequent Zero Balance',
-      description: 'You often reach zero before your next income. This puts you at risk.',
-      actionable: 'Activate Crisis Mode to protect essential expenses.',
-    });
-  }
-  
-  if (profile.emergencyReadiness === 'need_to_borrow') {
-    signals.push({
-      id: 'no_emergency',
-      type: 'emergency_unpreparedness',
-      severity: 'high',
-      title: 'No Emergency Buffer',
-      description: 'You would need to borrow for a ₹10,000 emergency.',
-      actionable: 'Start micro-saving with our round-off challenge to build an emergency fund.',
-    });
-  }
-  
-  if (debtRisk > 60) {
-    signals.push({
-      id: 'debt_warning',
-      type: 'income_stress',
-      severity: 'high',
-      title: 'Debt Risk Warning',
-      description: 'Your financial pattern indicates high risk of falling into a debt cycle.',
-      actionable: 'Enable auto-guardrails to prevent overspending in high-risk categories.',
+      description: 'Reaching zero before salary indicates tight cash flow.',
+      actionable: 'Try the weekly budget envelope method to spread spending evenly.',
     });
   }
   
@@ -568,67 +759,62 @@ function generateRecommendations(
   stressScore: number,
   silentBurdenIndex: number
 ): Recommendation[] {
-  const recs: Recommendation[] = [];
+  const recommendations: Recommendation[] = [];
   
-  // Priority: Emergency fund
+  if (silentBurdenIndex > 50) {
+    recommendations.push({
+      id: 'reduce_fixed',
+      priority: 'high',
+      title: 'Reduce Fixed Costs',
+      description: 'Your fixed expenses are eating too much of your income.',
+      action: 'Review and cut at least one subscription or negotiate a lower rent/EMI.',
+      category: 'spending',
+    });
+  }
+  
   if (profile.emergencyReadiness !== 'can_handle') {
-    recs.push({
+    recommendations.push({
       id: 'build_emergency',
       priority: 'high',
-      title: 'Build Emergency Fund',
-      description: 'Having 3-6 months of expenses saved provides security and reduces stress.',
-      action: 'Start with ₹500/week micro-savings',
+      title: 'Start Emergency Fund',
+      description: 'Begin building a financial safety net.',
+      action: 'Set aside ₹500-1000 weekly until you have 1 month of expenses saved.',
       category: 'emergency',
     });
   }
   
-  // High burden
-  if (silentBurdenIndex > 50) {
-    recs.push({
-      id: 'reduce_burden',
-      priority: 'high',
-      title: 'Reduce Fixed Commitments',
-      description: 'Your fixed expenses are taking too much of your income.',
-      action: 'Review subscriptions and negotiate bills',
+  if (stressScore > 50) {
+    recommendations.push({
+      id: 'track_spending',
+      priority: 'medium',
+      title: 'Daily Spending Check',
+      description: 'Awareness is the first step to control.',
+      action: 'Do a 15-second daily check-in on spending and mood.',
       category: 'spending',
     });
   }
   
-  // Impulse control
-  if (profile.spendingStyle === 'mostly_impulsive') {
-    recs.push({
-      id: 'impulse_control',
+  if (profile.spendingStyle !== 'mostly_planned') {
+    recommendations.push({
+      id: 'plan_purchases',
       priority: 'medium',
-      title: 'Delay Impulse Purchases',
-      description: 'Wait 24-48 hours before making unplanned purchases.',
-      action: 'Enable "Buy Later" reminders',
-      category: 'spending',
-    });
-  }
-  
-  // Daily check-in
-  if (stressScore > 40) {
-    recs.push({
-      id: 'daily_checkin',
-      priority: 'medium',
-      title: 'Start Daily Check-ins',
-      description: '15 seconds a day to track mood and spending builds awareness.',
-      action: 'Enable daily check-in notifications',
+      title: 'Plan Before You Spend',
+      description: 'Planned spending reduces regret and builds savings.',
+      action: 'Create a weekly spending plan each Sunday.',
       category: 'lifestyle',
     });
   }
   
-  // Savings habit
-  recs.push({
-    id: 'micro_savings',
-    priority: profile.emergencyReadiness === 'can_handle' ? 'low' : 'high',
-    title: 'Micro-Savings Challenge',
-    description: 'Round-off savings from each transaction builds funds automatically.',
-    action: 'Activate round-off savings',
-    category: 'savings',
+  recommendations.push({
+    id: 'review_monthly',
+    priority: 'low',
+    title: 'Monthly Money Review',
+    description: 'Regular reviews help catch issues early.',
+    action: 'Schedule 30 minutes at month-end to review spending patterns.',
+    category: 'lifestyle',
   });
   
-  return recs;
+  return recommendations;
 }
 
 function computeCrisisStatus(analysis: FinancialAnalysis | null): CrisisStatus {
@@ -643,22 +829,28 @@ function computeCrisisStatus(analysis: FinancialAnalysis | null): CrisisStatus {
   
   const triggerReasons: string[] = [];
   
-  if (analysis.stressScore >= 70) triggerReasons.push('Very high stress score');
-  if (analysis.debtRisk >= 70) triggerReasons.push('High debt risk');
-  if (analysis.silentBurdenIndex >= 80) triggerReasons.push('Extreme fixed expense burden');
-  if (analysis.survivalDays <= 7) triggerReasons.push('Less than a week of survival buffer');
+  if (analysis.stressScore >= 70) {
+    triggerReasons.push('Very high financial stress');
+  }
+  if (analysis.survivalDays < 7) {
+    triggerReasons.push('Less than 1 week of survival budget');
+  }
+  if (analysis.debtRisk >= 70) {
+    triggerReasons.push('High risk of falling into debt');
+  }
   
-  const isInCrisis = triggerReasons.length >= 2 || 
-    analysis.stressScore >= 80 || 
-    analysis.survivalDays <= 3;
+  const isInCrisis = triggerReasons.length >= 2 || analysis.stressScore >= 80;
   
-  const crisisLevel = isInCrisis ? 'critical' : 
-    triggerReasons.length > 0 ? 'warning' : 'none';
+  let crisisLevel: 'none' | 'warning' | 'critical' = 'none';
+  if (isInCrisis) {
+    crisisLevel = analysis.stressScore >= 85 ? 'critical' : 'warning';
+  }
   
   return {
     isInCrisis,
     crisisLevel,
     triggerReasons,
-    frozenCategories: isInCrisis ? ['shopping', 'entertainment', 'travel'] : [],
+    activeSince: isInCrisis ? new Date().toISOString() : undefined,
+    frozenCategories: isInCrisis ? ['travel', 'shopping', 'entertainment'] : [],
   };
 }
