@@ -51,10 +51,18 @@ serve(async (req) => {
 
   try {
     const { messages, userProfile, analysis } = await req.json();
-    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY");
+    
+    // Try multiple environment variable names for the API key
+    const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY") || Deno.env.get("OPENROUTER_KEY");
     
     if (!OPENROUTER_API_KEY) {
-      throw new Error("OPENROUTER_API_KEY is not configured");
+      console.error("Missing OPENROUTER_API_KEY - available env vars:", Object.keys(Deno.env.toObject()));
+      return new Response(JSON.stringify({ 
+        error: "AI service not configured. Please add OPENROUTER_API_KEY to Supabase secrets." 
+      }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Get the last user message
