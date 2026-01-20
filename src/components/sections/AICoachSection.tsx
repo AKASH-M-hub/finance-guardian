@@ -11,6 +11,7 @@ import ShimmerButton from '@/components/reactbits/ShimmerButton';
 import AnimatedCounter from '@/components/reactbits/AnimatedCounter';
 import GradientText from '@/components/reactbits/GradientText';
 import { incomeRangeToNumber } from '@/types/userProfile';
+import { useToast } from '@/hooks/use-toast';
 import { 
   Brain, 
   Target, 
@@ -24,11 +25,13 @@ import {
   Zap,
   Trophy,
   Plus,
-  Clock
+  Clock,
+  Check
 } from 'lucide-react';
 
 const AICoachSection: React.FC = () => {
   const { profile, analysis, streaks, checkIns, goals, addCheckIn, addGoal, updateGoalProgress } = useUserProfile();
+  const { toast } = useToast();
   const [showAddGoal, setShowAddGoal] = useState(false);
   const [newGoal, setNewGoal] = useState({
     title: '',
@@ -38,6 +41,12 @@ const AICoachSection: React.FC = () => {
   });
   const [dailyMood, setDailyMood] = useState<'great' | 'good' | 'okay' | 'stressed' | 'anxious'>('okay');
   const [dailySpend, setDailySpend] = useState('');
+  const [roundOffActive, setRoundOffActive] = useState(() => {
+    return localStorage.getItem('fyf_roundoff_savings') === 'true';
+  });
+  const [roundOffTotal, setRoundOffTotal] = useState(() => {
+    return parseInt(localStorage.getItem('fyf_roundoff_total') || '0', 10);
+  });
 
   if (!profile || !analysis) {
     return (
@@ -277,18 +286,96 @@ const AICoachSection: React.FC = () => {
         <CardContent className="space-y-4">
           <div className="p-4 rounded-lg bg-primary/10">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm">Round-off Savings Potential</span>
-              <Badge variant="secondary">Simulated</Badge>
+              <span className="text-sm">Round-off Savings {roundOffActive ? 'Accumulated' : 'Potential'}</span>
+              <Badge variant={roundOffActive ? 'default' : 'secondary'}>
+                {roundOffActive ? 'Active' : 'Simulated'}
+              </Badge>
             </div>
-            <p className="text-3xl font-bold text-primary">₹<AnimatedCounter value={roundOffSavings} />/month</p>
+            <p className="text-3xl font-bold text-primary">
+              ₹<AnimatedCounter value={roundOffActive ? roundOffTotal : roundOffSavings} />{roundOffActive ? '' : '/month'}
+            </p>
             <p className="text-xs text-muted-foreground mt-1">
-              By rounding up each transaction to the nearest ₹10
+              {roundOffActive 
+                ? `Total saved since activation • ₹${roundOffSavings}/month potential`
+                : 'By rounding up each transaction to the nearest ₹10'}
             </p>
           </div>
           
-          <ShimmerButton className="w-full">
-            Activate Round-Off Savings
-          </ShimmerButton>
+          {roundOffActive ? (
+            <div className="space-y-3">
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => {
+                    const simulated = Math.floor(Math.random() * 50) + 5;
+                    const newTotal = roundOffTotal + simulated;
+                    setRoundOffTotal(newTotal);
+                    localStorage.setItem('fyf_roundoff_total', newTotal.toString());
+                    toast({
+                      title: `+₹${simulated} saved!`,
+                      description: 'Round-off from your last transaction',
+                    });
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Simulate Transaction
+                </Button>
+                <Button 
+                  variant="outline"
+                  onClick={() => {
+                    if (roundOffTotal > 0 && goals.length > 0) {
+                      const firstGoal = goals[0];
+                      updateGoalProgress(firstGoal.id, roundOffTotal);
+                      toast({
+                        title: 'Transferred to goal!',
+                        description: `₹${roundOffTotal} added to "${firstGoal.title}"`,
+                      });
+                      setRoundOffTotal(0);
+                      localStorage.setItem('fyf_roundoff_total', '0');
+                    } else if (goals.length === 0) {
+                      toast({
+                        title: 'No goals found',
+                        description: 'Create a goal first to transfer savings',
+                        variant: 'destructive',
+                      });
+                    }
+                  }}
+                >
+                  Transfer to Goal
+                </Button>
+              </div>
+              <Button 
+                variant="ghost" 
+                className="w-full text-muted-foreground"
+                onClick={() => {
+                  setRoundOffActive(false);
+                  localStorage.setItem('fyf_roundoff_savings', 'false');
+                  toast({
+                    title: 'Round-off savings deactivated',
+                    description: 'You can reactivate anytime',
+                  });
+                }}
+              >
+                Deactivate Round-Off
+              </Button>
+            </div>
+          ) : (
+            <ShimmerButton 
+              className="w-full"
+              onClick={() => {
+                setRoundOffActive(true);
+                localStorage.setItem('fyf_roundoff_savings', 'true');
+                toast({
+                  title: '🎉 Round-off savings activated!',
+                  description: 'We\'ll round up your transactions and save the difference.',
+                });
+              }}
+            >
+              <Check className="h-4 w-4 mr-2" />
+              Activate Round-Off Savings
+            </ShimmerButton>
+          )}
         </CardContent>
       </GlowCard>
 

@@ -71,28 +71,5 @@ export {
   clearLocalStorageCache,
 } from './dataSync';
 
-// Re-export types
-export type {
-  Profile,
-  ProfileInsert,
-  ProfileUpdate,
-  FinancialAnalysis,
-  FinancialAnalysisInsert,
-  ActiveSignal,
-  ActiveSignalInsert,
-  Recommendation,
-  RecommendationInsert,
-  ChatConversation,
-  ChatMessage,
-  ChatMessageInsert,
-  CheckIn,
-  CheckInInsert,
-  Goal,
-  GoalInsert,
-  GoalUpdate,
-  GoalTransaction,
-  GoalTransactionInsert,
-} from './helpers';
-
 // Import/Export utilities
-export { importUserData, importFromFile, exportUserData } from './import';
+export { importUserData, importFromFile, exportUserData, mapDbProfile, mapDbAnalysis } from './import';
