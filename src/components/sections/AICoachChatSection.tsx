@@ -12,7 +12,7 @@ import InteractiveCard from '@/components/reactbits/InteractiveCard';
 import TypewriterText from '@/components/reactbits/TypewriterText';
 import ProgressRing from '@/components/reactbits/ProgressRing';
 import CountUpNumber from '@/components/reactbits/CountUpNumber';
-import { syncChatSession, getCurrentUser } from '@/integrations/supabase';
+import { getCurrentUser } from '@/integrations/supabase';
 import { 
   MessageCircle, 
   Send, 
@@ -58,14 +58,13 @@ const AICoachChatSection: React.FC = () => {
   const [userId, setUserId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Get current user
   useEffect(() => {
     const getUser = async () => {
       const { user } = await getCurrentUser();
       if (user) {
-        setUserId(user.id);
+        // User loaded - optional for future analytics
       }
     };
     getUser();
@@ -75,46 +74,45 @@ const AICoachChatSection: React.FC = () => {
   useEffect(() => {
     const savedHistory = localStorage.getItem(CHAT_HISTORY_KEY);
     if (savedHistory) {
-      const parsed = JSON.parse(savedHistory);
-      setSessions(parsed);
-      if (parsed.length > 0) {
-        setActiveSessionId(parsed[0].id);
+      const parsed = JSON.parse(savedHistory) as ChatSession[];
+
+      // Migrate any legacy numeric IDs to UUIDs to satisfy DB schema
+      const isUuid = (v: string) => /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+      let mutated = false;
+      const migrated = parsed.map((s) => {
+        let newId = s.id;
+        if (!isUuid(newId)) {
+          newId = crypto.randomUUID();
+          mutated = true;
+        }
+
+        const newMessages = s.messages.map((m) => ({
+          ...m,
+          id: isUuid(m.id) ? m.id : crypto.randomUUID(),
+        }));
+
+        return { ...s, id: newId, messages: newMessages };
+      });
+
+      if (mutated) {
+        localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(migrated));
+      }
+
+      setSessions(migrated);
+      if (migrated.length > 0) {
+        setActiveSessionId(migrated[0].id);
       }
     } else {
       createNewSession();
     }
   }, []);
 
-  // Save sessions whenever they change and sync to Supabase
+  // Save sessions to localStorage whenever they change
   useEffect(() => {
     if (sessions.length > 0) {
       localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(sessions));
-      
-      // Debounced sync to Supabase
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-      }
-
-      syncTimeoutRef.current = setTimeout(async () => {
-        if (userId && activeSessionId) {
-          const activeSession = sessions.find(s => s.id === activeSessionId);
-          if (activeSession && activeSession.messages.length > 1) {
-            await syncChatSession(userId, {
-              id: activeSession.id,
-              title: activeSession.title,
-              messages: activeSession.messages,
-            });
-          }
-        }
-      }, 3000); // Sync after 3 seconds of inactivity
     }
-
-    return () => {
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-      }
-    };
-  }, [sessions, userId, activeSessionId]);
+  }, [sessions]);
 
   // Auto-scroll
   useEffect(() => {
@@ -128,10 +126,10 @@ const AICoachChatSection: React.FC = () => {
 
   const createNewSession = () => {
     const newSession: ChatSession = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       title: 'New Conversation',
       messages: [{
-        id: '1',
+        id: crypto.randomUUID(),
         role: 'assistant',
         content: "👋 Hi! I'm your AI Financial Coach. I've analyzed your profile and I'm here to help you understand your financial situation. Ask me anything about your finances, stress score, or how to build better money habits!",
         timestamp: new Date().toISOString(),
@@ -155,7 +153,7 @@ const AICoachChatSection: React.FC = () => {
     if (!input.trim() || isLoading || !activeSessionId) return;
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       role: 'user',
       content: input.trim(),
       timestamp: new Date().toISOString(),
@@ -180,96 +178,87 @@ const AICoachChatSection: React.FC = () => {
     setShowTypewriter(true);
 
     try {
+      // Build personalized system context from user profile
+      const hasProfile = profile && (profile.age || profile.incomeRange);
+      const hasAnalysis = analysis && (analysis.monthlyBudget || analysis.savingsRate);
+      const hasGoals = goals.length > 0;
+
+      let systemPrompt = '';
+      
+      if (hasProfile || hasAnalysis || hasGoals) {
+        // User has data - provide personalized coaching
+        const userData = [];
+        if (profile?.name) userData.push(`Name: ${profile.name}`);
+        if (profile?.age) userData.push(`Age: ${profile.age}`);
+        if (profile?.incomeRange) userData.push(`Income: ${profile.incomeRange}`);
+        if (analysis?.riskProfile) userData.push(`Risk Profile: ${analysis.riskProfile}`);
+        if (analysis?.monthlyBudget) userData.push(`Monthly Budget: $${analysis.monthlyBudget}`);
+        if (analysis?.savingsRate) userData.push(`Savings Rate: ${analysis.savingsRate}%`);
+        if (analysis?.totalDebt) userData.push(`Total Debt: $${analysis.totalDebt}`);
+        if (analysis?.monthlyExpenses) userData.push(`Monthly Expenses: $${analysis.monthlyExpenses}`);
+        if (analysis?.emergencyFundMonths) userData.push(`Emergency Fund: ${analysis.emergencyFundMonths} months`);
+        if (hasGoals) userData.push(`Goals: ${goals.map(g => `${g.name} (${g.progress}/${g.target})`).join(', ')}`);
+        if (analysis?.stressSignals?.length) userData.push(`Stress Signals: ${analysis.stressSignals.map(s => s.type).join(', ')}`);
+        
+        systemPrompt = `You are a helpful AI financial assistant. Answer the user's question directly and concisely.
+
+AVAILABLE USER DATA:
+${userData.join('\n')}
+
+INSTRUCTIONS:
+- Answer ONLY what the user asks
+- Keep responses brief and focused
+- Reference their data ONLY if relevant to their specific question
+- Don't ask for more information - use what's available
+- Don't list all their data unless they ask for it
+- Be conversational and helpful`;
+      } else {
+        // No profile data - just answer their questions
+        systemPrompt = `You are a helpful AI financial assistant. Answer the user's questions directly and concisely. Keep responses brief and focused on what they ask. Don't request information - just provide helpful answers.`;
+      }
+
       const currentMessages = [...messages, userMessage];
       
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-coach`, {
-        method: 'POST',
+      // Call OpenRouter directly from frontend with personalized context
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          "Authorization": `Bearer ${import.meta.env.VITE_OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          messages: currentMessages.map(m => ({ role: m.role, content: m.content })),
-          userProfile: profile,
-          analysis,
-          streaks,
-          goals,
+          model: "mistralai/mistral-7b-instruct",
+          messages: [
+            { role: "system", content: systemPrompt },
+            ...currentMessages.map(m => ({ role: m.role, content: m.content }))
+          ],
         }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to get response');
+        const errorText = await response.text();
+        console.error('OpenRouter error:', errorText);
+        throw new Error(`API error: ${response.status}`);
       }
 
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let assistantMessage = '';
-      let textBuffer = '';
+      const result = await response.json();
+      const content = result.choices?.[0]?.message?.content || "I received your message!";
 
-      if (reader) {
-        const assistantMsgId = (Date.now() + 1).toString();
-        
-        // Add empty assistant message first
-        setSessions(prev => prev.map(s => {
-          if (s.id === activeSessionId) {
-            return {
-              ...s,
-              messages: [...s.messages, {
-                id: assistantMsgId,
-                role: 'assistant',
-                content: '',
-                timestamp: new Date().toISOString(),
-              }],
-            };
-          }
-          return s;
-        }));
-
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          textBuffer += decoder.decode(value, { stream: true });
-          
-          let newlineIndex: number;
-          while ((newlineIndex = textBuffer.indexOf('\n')) !== -1) {
-            let line = textBuffer.slice(0, newlineIndex);
-            textBuffer = textBuffer.slice(newlineIndex + 1);
-            
-            if (line.endsWith('\r')) line = line.slice(0, -1);
-            if (line.startsWith(':') || line.trim() === '') continue;
-            if (!line.startsWith('data: ')) continue;
-            
-            const jsonStr = line.slice(6).trim();
-            if (jsonStr === '[DONE]') break;
-            
-            try {
-              const json = JSON.parse(jsonStr);
-              const content = json.choices?.[0]?.delta?.content;
-              if (content) {
-                assistantMessage += content;
-                setSessions(prev => prev.map(s => {
-                  if (s.id === activeSessionId) {
-                    return {
-                      ...s,
-                      messages: s.messages.map(m => 
-                        m.id === assistantMsgId 
-                          ? { ...m, content: assistantMessage }
-                          : m
-                      ),
-                    };
-                  }
-                  return s;
-                }));
-              }
-            } catch {
-              textBuffer = line + '\n' + textBuffer;
-              break;
-            }
-          }
+      const assistantMsgId = crypto.randomUUID();
+      setSessions(prev => prev.map(s => {
+        if (s.id === activeSessionId) {
+          return {
+            ...s,
+            messages: [...s.messages, {
+              id: assistantMsgId,
+              role: 'assistant',
+              content: content,
+              timestamp: new Date().toISOString(),
+            }],
+          };
         }
-      }
+        return s;
+      }));
     } catch (error) {
       console.error('Chat error:', error);
       setSessions(prev => prev.map(s => {
@@ -277,7 +266,7 @@ const AICoachChatSection: React.FC = () => {
           return {
             ...s,
             messages: [...s.messages, {
-              id: (Date.now() + 2).toString(),
+              id: crypto.randomUUID(),
               role: 'assistant',
               content: "I'm having trouble connecting right now. Please try again in a moment.",
               timestamp: new Date().toISOString(),

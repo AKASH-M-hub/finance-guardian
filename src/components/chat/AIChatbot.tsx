@@ -8,7 +8,6 @@ import SpotlightButton from '@/components/reactbits/SpotlightButton';
 import PulseRing from '@/components/reactbits/PulseRing';
 import { MessageCircle, Send, X, Bot, User, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { syncChatSession } from '@/integrations/supabase/helpers';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -23,54 +22,27 @@ const AIChatbot: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     { 
       role: 'assistant', 
-      content: "Hi! I'm your AI financial coach. I've analyzed your profile and I'm here to help you understand your financial situation and build healthy money habits. What would you like to know?" 
+      content: "Hi! I'm your AI financial coach. I've analyzed your profile and I'm here to help you understand your financial situation and build healthy money habits. What would you like to know?",
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
     }
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const syncTimeoutRef = useRef<NodeJS.Timeout>();
-  const sessionIdRef = useRef<string>(Date.now().toString());
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-
-    // Debounced sync to database (3-second delay)
-    if (syncTimeoutRef.current) {
-      clearTimeout(syncTimeoutRef.current);
-    }
-
-    syncTimeoutRef.current = setTimeout(() => {
-      if (profile?.id && messages.length > 1) {
-        const messagesWithIds = messages.map((msg, idx) => ({
-          ...msg,
-          id: msg.id || `msg-${idx}-${Date.now()}`,
-          timestamp: msg.timestamp || new Date().toISOString(),
-        }));
-
-        syncChatSession(profile.id, {
-          id: sessionIdRef.current,
-          title: 'AI Coach Chat',
-          messages: messagesWithIds,
-        }).catch(error => console.error('Chat sync error:', error));
-      }
-    }, 3000);
-
-    return () => {
-      if (syncTimeoutRef.current) {
-        clearTimeout(syncTimeoutRef.current);
-      }
-    };
-  }, [messages, profile?.id]);
+  }, [messages]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
     const userMessage = input.trim();
-    const userMessageId = `msg-user-${Date.now()}`;
+    const userMessageId = crypto.randomUUID();
     const userMessageTimestamp = new Date().toISOString();
     
     setInput('');
@@ -83,7 +55,8 @@ const AIChatbot: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-coach`, {
+      const functionsBase = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.functions.supabase.co`;
+      const response = await fetch(`${functionsBase}/ai-coach`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -106,7 +79,7 @@ const AIChatbot: React.FC = () => {
       let assistantMessage = '';
 
       if (reader) {
-        const assistantMessageId = `msg-assistant-${Date.now()}`;
+        const assistantMessageId = crypto.randomUUID();
         const assistantMessageTimestamp = new Date().toISOString();
         setMessages(prev => [...prev, { 
           role: 'assistant', 
