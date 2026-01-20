@@ -59,14 +59,15 @@ const SubscriptionLeakCard = ({ subscriptions: initialSubscriptions }: Subscript
         </div>
         
         <div className="space-y-3">
-          {subscriptions.map((sub) => (
+          {/* Active/Wanted subscriptions first */}
+          {subscriptions
+            .filter(sub => !sub.isUnwanted)
+            .map((sub) => (
             <div 
               key={sub.id}
               className={cn(
                 "flex items-center justify-between p-3 rounded-lg border transition-all",
-                sub.isUnwanted && sub.isActive 
-                  ? "border-destructive/30 bg-destructive/5" 
-                  : "border-border bg-accent/30",
+                "border-border bg-accent/30",
                 !sub.isActive && "opacity-50"
               )}
             >
@@ -86,25 +87,65 @@ const SubscriptionLeakCard = ({ subscriptions: initialSubscriptions }: Subscript
               </div>
               
               <Button
-                variant={sub.isUnwanted ? "destructive" : "outline"}
+                variant="outline"
                 size="sm"
                 onClick={() => markAsUnwanted(sub.id)}
                 className="h-8"
               >
-                {sub.isUnwanted ? (
-                  <>
-                    <X className="h-3 w-3 mr-1" />
-                    Unwanted
-                  </>
-                ) : (
-                  <>
-                    <Check className="h-3 w-3 mr-1" />
-                    Keep
-                  </>
-                )}
+                <Check className="h-3 w-3 mr-1" />
+                Keep
               </Button>
             </div>
           ))}
+          
+          {/* Unwanted subscriptions section */}
+          {subscriptions.filter(sub => sub.isUnwanted).length > 0 && (
+            <>
+              <div className="border-t pt-3 mt-3">
+                <p className="text-xs text-destructive font-medium mb-2 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  Marked as Unwanted
+                </p>
+              </div>
+              {subscriptions
+                .filter(sub => sub.isUnwanted)
+                .map((sub) => (
+                <div 
+                  key={sub.id}
+                  className={cn(
+                    "flex items-center justify-between p-3 rounded-lg border transition-all",
+                    "border-destructive/30 bg-destructive/5",
+                    !sub.isActive && "opacity-50"
+                  )}
+                >
+              <div className="flex items-center gap-3">
+                <Switch 
+                  checked={sub.isActive}
+                  onCheckedChange={() => toggleSubscription(sub.id)}
+                />
+                <div>
+                  <p className={cn("font-medium text-sm", !sub.isActive && "line-through")}>
+                    {sub.name}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    ₹{sub.amount}/{sub.frequency === 'monthly' ? 'mo' : 'yr'}
+                  </p>
+                </div>
+              </div>
+              
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => markAsUnwanted(sub.id)}
+                className="h-8"
+              >
+                <X className="h-3 w-3 mr-1" />
+                Unwanted
+              </Button>
+            </div>
+          ))}
+            </>
+          )}
         </div>
         
         {leakedAmount > 0 && (
