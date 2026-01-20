@@ -20,6 +20,7 @@ import CircadianCashFlowSection from '@/components/sections/CircadianCashFlowSec
 import PrivacyTrustSection from '@/components/sections/PrivacyTrustSection';
 import QuantumSimulatorSection from '@/components/sections/QuantumSimulatorSection';
 import CognitiveLoadSection from '@/components/sections/CognitiveLoadSection';
+import HelpAndSupportSection from '@/components/sections/HelpAndSupportSection';
 import { FinancialIdentitySection } from '@/components/sections/FinancialIdentitySection';
 import { IntergenerationalSection } from '@/components/sections/IntergenerationalSection';
 import { DecisionFatigueSection } from '@/components/sections/DecisionFatigueSection';
@@ -28,7 +29,6 @@ import EmotionalSpendingSection from '@/components/sections/EmotionalSpendingSec
 import FinancialRecoverySection from '@/components/sections/FinancialRecoverySection';
 import RegretPreventionSection from '@/components/sections/RegretPreventionSection';
 import OnboardingForm from '@/components/onboarding/OnboardingForm';
-import AIChatbot from '@/components/chat/AIChatbot';
 import SpotlightCursor from '@/components/reactbits/SpotlightCursor';
 import { UserProfileProvider, useUserProfile } from '@/contexts/UserProfileContext';
 
@@ -97,6 +97,8 @@ const AppContent = () => {
         return <QuantumSimulatorSection />;
       case 'cognitive-load':
         return <CognitiveLoadSection />;
+      case 'help-support':
+        return <HelpAndSupportSection />;
       case 'reports':
         return <ReportsSection />;
       case 'settings':
@@ -134,8 +136,6 @@ const AppContent = () => {
           </div>
         </main>
       </div>
-
-      <AIChatbot />
     </div>
   );
 };

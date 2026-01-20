@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { Heart, TrendingUp, Shield, Star, Clock, CheckCircle, AlertTriangle, Sparkles, Target, ArrowRight } from 'lucide-react';
+import { Heart, TrendingUp, Shield, Star, Clock, CheckCircle, AlertTriangle, Sparkles, Target, ArrowRight, Check, MessageCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 import GlowCard from '@/components/reactbits/GlowCard';
 import ProgressRing from '@/components/reactbits/ProgressRing';
 import CountUpNumber from '@/components/reactbits/CountUpNumber';
 import RippleButton from '@/components/reactbits/RippleButton';
+import { createRecoveryPlan, navigateToAICoach } from '@/lib/modalUtils';
 import type { 
   StressRecoveryPath, 
   StabilityTimeline, 
@@ -96,6 +99,9 @@ const mockReinforcements: PositiveReinforcement[] = [
 
 const FinancialRecoverySection: React.FC = () => {
   const [showAllWins, setShowAllWins] = useState(false);
+  const [planDialogOpen, setPlanDialogOpen] = useState(false);
+  const [planSuccess, setPlanSuccess] = useState(false);
+  const [aiCoachNavigated, setAiCoachNavigated] = useState(false);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -417,11 +423,77 @@ const FinancialRecoverySection: React.FC = () => {
       </Card>
 
       {/* Action Buttons */}
-      <div className="flex gap-4 justify-center">
-        <RippleButton variant="primary">
-          Start Recovery Plan
-        </RippleButton>
-        <RippleButton variant="secondary">
+      <div className="flex gap-4 justify-center flex-wrap">
+        <Dialog open={planDialogOpen} onOpenChange={setPlanDialogOpen}>
+          <DialogTrigger asChild>
+            <RippleButton variant="primary">
+              <Target className="h-4 w-4 mr-2" />
+              Start Recovery Plan
+            </RippleButton>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Start Your Recovery Plan</DialogTitle>
+              <DialogDescription>
+                Begin your journey to financial stability
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-4 bg-primary/10 rounded-lg">
+                <p className="text-sm font-medium mb-2">Recovery Stages:</p>
+                <ul className="space-y-2 text-sm">
+                  {mockRecoveryPath.stages.map((stage) => (
+                    <li key={stage.number} className="flex items-center gap-2">
+                      {stage.isCompleted ? (
+                        <CheckCircle className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <div className="h-4 w-4 rounded-full border border-muted-foreground" />
+                      )}
+                      <span>{stage.number}. {stage.title}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm text-muted-foreground mb-1">Estimated Duration:</p>
+                <p className="font-bold text-lg">{mockRecoveryPath.stages.reduce((sum, s) => sum + s.estimatedDays, 0)} days</p>
+              </div>
+              <Button 
+                className="w-full"
+                onClick={() => {
+                  const plan = createRecoveryPlan({
+                    type: 'financial_recovery',
+                    duration: mockRecoveryPath.stages.reduce((sum, s) => sum + s.estimatedDays, 0),
+                    milestones: mockRecoveryPath.stages.map((s, i) => ({
+                      day: mockRecoveryPath.stages.slice(0, i).reduce((sum, x) => sum + x.estimatedDays, 0),
+                      goal: s.title,
+                      target: s.number,
+                    })),
+                    actionItems: mockRecoveryPath.stages.map(s => s.description),
+                  });
+                  if (plan) {
+                    setPlanSuccess(true);
+                    setTimeout(() => {
+                      setPlanDialogOpen(false);
+                      setPlanSuccess(false);
+                    }, 1500);
+                  }
+                }}
+              >
+                {planSuccess ? <><Check className="h-4 w-4 mr-2" /> Started!</> : 'Start Recovery Plan'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <RippleButton 
+          variant="secondary"
+          onClick={() => {
+            navigateToAICoach();
+            setAiCoachNavigated(true);
+          }}
+        >
+          <MessageCircle className="h-4 w-4 mr-2" />
           Talk to AI Coach
         </RippleButton>
       </div>

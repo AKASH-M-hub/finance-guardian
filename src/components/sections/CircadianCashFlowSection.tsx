@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { 
   Moon, 
   Sun, 
@@ -16,18 +17,22 @@ import {
   Thermometer,
   Heart,
   BedDouble,
-  Activity
+  Activity,
+  Check
 } from 'lucide-react';
 import ProgressRing from '@/components/reactbits/ProgressRing';
 import CountUpNumber from '@/components/reactbits/CountUpNumber';
 import InteractiveCard from '@/components/reactbits/InteractiveCard';
+import { addToCalendar } from '@/lib/modalUtils';
 
 const CircadianCashFlowSection = () => {
   const [activeTab, setActiveTab] = useState('clock');
+  const [calendarSuccess, setCalendarSuccess] = useState<string | null>(null);
 
   const currentHour = new Date().getHours();
 
   // Mock biological clock data
+
   const biologicalClock = {
     currentHour,
     energyLevel: 72,
@@ -366,9 +371,28 @@ const CircadianCashFlowSection = () => {
                       <p className="text-sm text-muted-foreground">{plan.reason}</p>
                     </div>
                     
-                    <Button className="w-full mt-4" variant="outline">
-                      <Calendar className="h-4 w-4 mr-2" />
-                      Add to Calendar
+                    <Button 
+                      className="w-full mt-4" 
+                      variant="outline"
+                      onClick={() => {
+                        const success = addToCalendar({
+                          title: `Schedule: ${plan.reason}`,
+                          description: `Optimal time for financial decision: ${plan.reason}`,
+                          date: new Date(),
+                          time: `${String(plan.optimalTimeSlot.hour).padStart(2, '0')}:00`,
+                          duration: 60,
+                        });
+                        if (success) {
+                          setCalendarSuccess(plan.id);
+                          setTimeout(() => setCalendarSuccess(null), 2000);
+                        }
+                      }}
+                    >
+                      {calendarSuccess === plan.id ? (
+                        <><Check className="h-4 w-4 mr-2" /> Added!</>
+                      ) : (
+                        <><Calendar className="h-4 w-4 mr-2" /> Add to Calendar</>
+                      )}
                     </Button>
                   </div>
                 ))}

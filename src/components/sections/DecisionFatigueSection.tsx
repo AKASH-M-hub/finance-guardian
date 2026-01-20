@@ -2,11 +2,16 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Brain, Moon, ShoppingCart, ArrowLeftRight, Eye, AlertTriangle, Clock, Pause, Zap, Activity } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Brain, Moon, ShoppingCart, ArrowLeftRight, Eye, AlertTriangle, Clock, Pause, Zap, Activity, Check, X } from 'lucide-react';
 import ProgressRing from '@/components/reactbits/ProgressRing';
 import CountUpNumber from '@/components/reactbits/CountUpNumber';
 import GlowCard from '@/components/reactbits/GlowCard';
 import RippleButton from '@/components/reactbits/RippleButton';
+import { addToCalendar, toggleFeature } from '@/lib/modalUtils';
 import type { DecisionFatigueProfile } from '@/types/decisionFatigue';
 
 const mockProfile: DecisionFatigueProfile = {
@@ -68,6 +73,11 @@ const mockProfile: DecisionFatigueProfile = {
 export const DecisionFatigueSection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'overview' | 'patterns' | 'stakes' | 'cooldown'>('overview');
   const [cooldownActive, setCooldownActive] = useState(mockProfile.coolDownMode.isActive);
+  const [focusScheduleDialogOpen, setFocusScheduleDialogOpen] = useState(false);
+  const [manageExceptionsDialogOpen, setManageExceptionsDialogOpen] = useState(false);
+  const [newException, setNewException] = useState('');
+  const [exceptions, setExceptions] = useState(mockProfile.coolDownMode.urgentExceptions);
+  const [calendarSuccess, setCalendarSuccess] = useState(false);
 
   const getFatigueColor = (score: number): 'success' | 'warning' | 'danger' => {
     if (score < 40) return 'success';
@@ -388,9 +398,52 @@ export const DecisionFatigueSection: React.FC = () => {
                     <span className="text-sm font-medium">{decision.confidenceLevel}%</span>
                   </div>
                 </div>
-                <RippleButton variant="primary" className="w-full">
-                  Schedule Focused Decision Time
-                </RippleButton>
+                <Dialog open={focusScheduleDialogOpen} onOpenChange={setFocusScheduleDialogOpen}>
+                  <DialogTrigger asChild>
+                    <RippleButton variant="primary" className="w-full">
+                      Schedule Focused Decision Time
+                    </RippleButton>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Schedule Focused Decision Time</DialogTitle>
+                      <DialogDescription>
+                        Make this high-stakes decision during your optimal focus period
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div className="p-4 bg-primary/10 rounded-lg">
+                        <p className="text-sm text-muted-foreground mb-1">Decision Category:</p>
+                        <p className="font-bold text-lg">{decision.category}</p>
+                      </div>
+                      <div className="p-4 bg-muted/50 rounded-lg">
+                        <p className="text-sm text-muted-foreground mb-1">Amount:</p>
+                        <p className="font-bold text-2xl">₹{decision.amount.toLocaleString()}</p>
+                      </div>
+                      <Button 
+                        className="w-full"
+                        onClick={() => {
+                          const success = addToCalendar({
+                            title: `Focus Time: ${decision.category} Decision (₹${decision.amount})`,
+                            description: `Dedicated focus time for your ${decision.category} purchase decision`,
+                            date: new Date(),
+                            time: '09:00',
+                            duration: 120,
+                          });
+                          if (success) {
+                            setCalendarSuccess(true);
+                            setTimeout(() => {
+                              setFocusScheduleDialogOpen(false);
+                              setCalendarSuccess(false);
+                            }, 1500);
+                          }
+                        }}
+                      >
+                        {calendarSuccess ? <><Check className="h-4 w-4 mr-2" /> Scheduled!</> : 'Add to Calendar'}
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </CardContent>
             </GlowCard>
           ))}
@@ -438,9 +491,69 @@ export const DecisionFatigueSection: React.FC = () => {
                   <span>{exception}</span>
                 </div>
               ))}
-              <RippleButton variant="secondary" className="w-full mt-4">
-                Manage Exceptions
-              </RippleButton>
+              <Dialog open={manageExceptionsDialogOpen} onOpenChange={setManageExceptionsDialogOpen}>
+                <DialogTrigger asChild>
+                  <RippleButton variant="secondary" className="w-full mt-4">
+                    Manage Exceptions
+                  </RippleButton>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Manage Urgent Exceptions</DialogTitle>
+                    <DialogDescription>
+                      Categories that can bypass cool-down mode in emergencies
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      {exceptions.map((exception, index) => (
+                        <div key={index} className="p-3 bg-muted rounded-lg flex items-center justify-between">
+                          <span>{exception}</span>
+                          <Button 
+                            size="sm" 
+                            variant="ghost"
+                            onClick={() => setExceptions(exceptions.filter((_, i) => i !== index))}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <Input 
+                        placeholder="Add new exception..."
+                        value={newException}
+                        onChange={(e) => setNewException(e.target.value)}
+                        onKeyPress={(e) => {
+                          if (e.key === 'Enter' && newException) {
+                            setExceptions([...exceptions, newException]);
+                            setNewException('');
+                          }
+                        }}
+                      />
+                      <Button 
+                        onClick={() => {
+                          if (newException) {
+                            setExceptions([...exceptions, newException]);
+                            setNewException('');
+                          }
+                        }}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                    <Button 
+                      className="w-full"
+                      onClick={() => {
+                        localStorage.setItem('decision_exceptions', JSON.stringify(exceptions));
+                        setManageExceptionsDialogOpen(false);
+                      }}
+                    >
+                      <Check className="h-4 w-4 mr-2" /> Save Exceptions
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
 

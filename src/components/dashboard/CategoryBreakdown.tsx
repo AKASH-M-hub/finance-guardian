@@ -1,25 +1,26 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
-import { mockTransactions } from '@/data/mockData';
 import { categoryIcons, categoryColors } from '@/data/mockData';
 import { PieChartIcon } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { getUserTransactions, getCategorySpending } from '@/lib/transactionUtils';
 
 const CategoryBreakdown = () => {
-  // Calculate category totals from transactions
-  const categoryTotals = mockTransactions
-    .filter(t => t.type === 'expense')
-    .reduce((acc, t) => {
-      acc[t.category] = (acc[t.category] || 0) + t.amount;
-      return acc;
-    }, {} as Record<string, number>);
+  const [chartData, setChartData] = useState<{ name: string; value: number; icon: string }[]>([]);
 
-  const chartData = Object.entries(categoryTotals)
-    .map(([category, amount]) => ({
+  useEffect(() => {
+    // Load user transactions and calculate category spending
+    const transactions = getUserTransactions();
+    const categorySpending = getCategorySpending(transactions);
+    
+    const data = categorySpending.map(({ category, amount }) => ({
       name: category,
       value: amount,
       icon: categoryIcons[category] || '📦'
-    }))
-    .sort((a, b) => b.value - a.value);
+    }));
+    
+    setChartData(data);
+  }, []);
 
   const COLORS = [
     'hsl(var(--chart-1))',

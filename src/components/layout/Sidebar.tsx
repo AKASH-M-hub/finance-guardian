@@ -61,6 +61,7 @@ const Sidebar = ({ activeTab, onTabChange, isOpen = true, onClose }: SidebarProp
     { id: 'privacy-trust', label: 'Privacy & Trust', icon: Lock },
     { id: 'quantum-simulator', label: 'Quantum Simulator', icon: Atom },
     { id: 'cognitive-load', label: 'Cognitive Load', icon: Cpu },
+    { id: 'help-support', label: 'Help & Support', icon: HelpCircle },
     { id: 'reports', label: 'Reports', icon: FileText },
     { id: 'settings', label: 'Settings', icon: Settings },
   ];

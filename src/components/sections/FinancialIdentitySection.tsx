@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Heart, Shield, Sparkles, Brain, Lightbulb, BookOpen, TrendingUp } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Heart, Shield, Sparkles, Brain, Lightbulb, BookOpen, TrendingUp, Check } from 'lucide-react';
 import ProgressRing from '@/components/reactbits/ProgressRing';
 import CountUpNumber from '@/components/reactbits/CountUpNumber';
 import GlowCard from '@/components/reactbits/GlowCard';
@@ -58,6 +59,8 @@ const mockProfile: FinancialIdentityProfile = {
 
 export const FinancialIdentitySection: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'worth' | 'identity' | 'compassion'>('worth');
+  const [hobbyDialogOpen, setHobbyDialogOpen] = useState(false);
+  const [selectedHobby, setSelectedHobby] = useState<any>(null);
 
   const getStrengthColor = (strength: string) => {
     switch (strength) {
@@ -195,9 +198,52 @@ export const FinancialIdentitySection: React.FC = () => {
                     {item.estimatedCost === 0 ? 'Free!' : `₹${item.estimatedCost}`}
                   </span>
                 </div>
-                <RippleButton variant="secondary" className="w-full">
-                  Explore This
-                </RippleButton>
+                <Dialog open={hobbyDialogOpen && selectedHobby?.id === item.id} onOpenChange={(open) => {
+                  setHobbyDialogOpen(open);
+                  if (open) setSelectedHobby(item);
+                }}>
+                  <DialogTrigger asChild>
+                    <RippleButton 
+                      variant="secondary" 
+                      className="w-full"
+                      onClick={() => {
+                        setSelectedHobby(item);
+                        setHobbyDialogOpen(true);
+                      }}
+                    >
+                      Explore This
+                    </RippleButton>
+                  </DialogTrigger>
+                  {selectedHobby && (
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>{selectedHobby.hobby}</DialogTitle>
+                        <DialogDescription>
+                          Low-cost alternative to keep your {selectedHobby.identityTrait.toLowerCase()} identity alive
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <div className="p-4 bg-primary/10 rounded-lg">
+                          <p className="text-sm font-medium mb-2">Your Identity:</p>
+                          <p className="text-lg font-bold">{selectedHobby.identityTrait}</p>
+                        </div>
+                        <div className="p-4 bg-emerald-500/10 rounded-lg">
+                          <p className="text-sm font-medium mb-2">Low-Cost Alternative:</p>
+                          <p className="text-lg">{selectedHobby.lowCostAlternative}</p>
+                        </div>
+                        <div className="p-4 bg-muted/50 rounded-lg">
+                          <p className="text-sm font-medium mb-2">Estimated Cost:</p>
+                          <p className="text-2xl font-bold text-primary">
+                            {selectedHobby.estimatedCost === 0 ? '₹0 (Free!)' : `₹${selectedHobby.estimatedCost}`}
+                          </p>
+                        </div>
+                        <RippleButton className="w-full" onClick={() => setHobbyDialogOpen(false)}>
+                          <Check className="h-4 w-4 mr-2" /> Got it!
+                        </RippleButton>
+                      </div>
+                    </DialogContent>
+                  )}
+                </Dialog>
               </CardContent>
             </Card>
           ))}

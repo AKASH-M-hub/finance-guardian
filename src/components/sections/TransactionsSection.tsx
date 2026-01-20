@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Transaction } from '@/types/finance';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -11,7 +11,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { mockTransactions, categoryIcons } from '@/data/mockData';
+import { categoryIcons } from '@/data/mockData';
+import { getUserTransactions } from '@/lib/transactionUtils';
 import { cn } from '@/lib/utils';
 import { 
   Search, 
@@ -24,18 +25,25 @@ import {
 } from 'lucide-react';
 
 const TransactionsSection = () => {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [typeFilter, setTypeFilter] = useState<string>('all');
 
-  const filteredTransactions = mockTransactions.filter(t => {
+  useEffect(() => {
+    // Load user transactions from localStorage
+    const userTransactions = getUserTransactions();
+    setTransactions(userTransactions);
+  }, []);
+
+  const filteredTransactions = transactions.filter(t => {
     const matchesSearch = t.merchant.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || t.category === categoryFilter;
     const matchesType = typeFilter === 'all' || t.type === typeFilter;
     return matchesSearch && matchesCategory && matchesType;
   });
 
-  const categories = [...new Set(mockTransactions.map(t => t.category))];
+  const categories = [...new Set(transactions.map(t => t.category))];
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -47,7 +55,7 @@ const TransactionsSection = () => {
   };
 
   // Find expensive spends (top 3)
-  const expensiveSpends = [...mockTransactions]
+  const expensiveSpends = [...transactions]
     .filter(t => t.type === 'expense')
     .sort((a, b) => b.amount - a.amount)
     .slice(0, 3);

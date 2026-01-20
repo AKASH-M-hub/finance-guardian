@@ -1,10 +1,28 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { spendingPatternData } from '@/data/mockData';
 import { TrendingUp } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { getUserTransactions, calculateWeeklySpending, getSpendingInsight, initializeMockTransactions } from '@/lib/transactionUtils';
+import { mockTransactions } from '@/data/mockData';
 
 const SpendingChart = () => {
-  const weekendDays = ['Sat', 'Sun'];
+  const [weeklyData, setWeeklyData] = useState<{ day: string; amount: number }[]>([]);
+  const [insight, setInsight] = useState({ message: '', severity: 'low' as 'low' | 'medium' | 'high' });
+
+  useEffect(() => {
+    // Initialize with mock data if no transactions exist (first-time users)
+    initializeMockTransactions(mockTransactions);
+    
+    // Load user transactions and calculate weekly spending
+    const transactions = getUserTransactions();
+    const spending = calculateWeeklySpending(transactions);
+    const spendingInsight = getSpendingInsight(spending);
+    
+    setWeeklyData(spending);
+    setInsight(spendingInsight);
+  }, []);
+
+  const insightColor = insight.severity === 'high' ? 'text-amber-600' : insight.severity === 'medium' ? 'text-yellow-600' : 'text-green-600';
   
   return (
     <Card className="border-border/50 shadow-md">
@@ -17,7 +35,7 @@ const SpendingChart = () => {
       <CardContent>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={spendingPatternData}>
+            <AreaChart data={weeklyData}>
               <defs>
                 <linearGradient id="colorSpending" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3}/>
@@ -58,8 +76,7 @@ const SpendingChart = () => {
         
         <div className="mt-4 p-3 rounded-lg bg-accent/50">
           <p className="text-sm text-muted-foreground">
-            <span className="text-amber-600 font-medium">⚠️ Weekend Spike: </span>
-            Your spending increases by 85% on weekends. Consider planning weekend activities with a budget.
+            <span className={`${insightColor} font-medium`}>{insight.message}</span>
           </p>
         </div>
       </CardContent>

@@ -4,6 +4,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Shield, 
   Users, 
@@ -17,14 +21,22 @@ import {
   Flame,
   Calendar,
   Instagram,
-  Twitter
+  Twitter,
+  Check
 } from 'lucide-react';
 import ProgressRing from '@/components/reactbits/ProgressRing';
 import CountUpNumber from '@/components/reactbits/CountUpNumber';
 import InteractiveCard from '@/components/reactbits/InteractiveCard';
+import { scheduleAppBlock, setAlertPreferences } from '@/lib/modalUtils';
 
 const SocialInfluenceFirewallSection = () => {
   const [activeTab, setActiveTab] = useState('overview');
+  const [blockDialogOpen, setBlockDialogOpen] = useState(false);
+  const [selectedApp, setSelectedApp] = useState<string | null>(null);
+  const [blockStartTime, setBlockStartTime] = useState('22:00');
+  const [blockEndTime, setBlockEndTime] = useState('07:00');
+  const [blockDays, setBlockDays] = useState<string[]>(['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']);
+  const [blockSuccess, setBlockSuccess] = useState(false);
 
   // Mock data
   const socialImmunityScore = {
@@ -328,10 +340,91 @@ const SocialInfluenceFirewallSection = () => {
                         <span className="text-xs text-muted-foreground">{suggestion.vulnerabilityScore}% vulnerable</span>
                       </div>
                     </div>
-                    <Button className="w-full mt-4" variant="outline">
-                      <Shield className="h-4 w-4 mr-2" />
-                      Enable Block Schedule
-                    </Button>
+                    <Dialog open={blockDialogOpen && selectedApp === suggestion.id} onOpenChange={(open) => {
+                      setBlockDialogOpen(open);
+                      if (!open) setSelectedApp(null);
+                    }}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          className="w-full mt-4" 
+                          variant="outline"
+                          onClick={() => {
+                            setSelectedApp(suggestion.id);
+                            setBlockDialogOpen(true);
+                          }}
+                        >
+                          <Shield className="h-4 w-4 mr-2" />
+                          Enable Block Schedule
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Block Schedule for {suggestion.app}</DialogTitle>
+                          <DialogDescription>
+                            Set time and days to automatically block this app
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            <div>
+                              <Label>Start Time</Label>
+                              <Input 
+                                type="time" 
+                                value={blockStartTime}
+                                onChange={(e) => setBlockStartTime(e.target.value)}
+                              />
+                            </div>
+                            <div>
+                              <Label>End Time</Label>
+                              <Input 
+                                type="time" 
+                                value={blockEndTime}
+                                onChange={(e) => setBlockEndTime(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <Label>Days to Block</Label>
+                            <div className="grid grid-cols-2 gap-2 mt-2">
+                              {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map((day) => (
+                                <Button 
+                                  key={day}
+                                  variant={blockDays.includes(day) ? 'default' : 'outline'}
+                                  size="sm"
+                                  onClick={() => setBlockDays(
+                                    blockDays.includes(day) 
+                                      ? blockDays.filter(d => d !== day)
+                                      : [...blockDays, day]
+                                  )}
+                                >
+                                  {day.slice(0, 3)}
+                                </Button>
+                              ))}
+                            </div>
+                          </div>
+                          <Button 
+                            className="w-full"
+                            onClick={() => {
+                              const success = scheduleAppBlock({
+                                appName: suggestion.app,
+                                startTime: blockStartTime,
+                                endTime: blockEndTime,
+                                days: blockDays
+                              });
+                              if (success) {
+                                setBlockSuccess(true);
+                                setTimeout(() => {
+                                  setBlockDialogOpen(false);
+                                  setBlockSuccess(false);
+                                }, 2000);
+                              }
+                            }}
+                          >
+                            {blockSuccess ? <><Check className="h-4 w-4 mr-2" /> Scheduled!</> : 'Confirm Block Schedule'}
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 ))}
               </div>

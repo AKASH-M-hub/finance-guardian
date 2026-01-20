@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
-import { TrendingUp, AlertTriangle, CreditCard, Home, Coffee, ArrowUpRight, ArrowDownRight, Minus, Shield, Activity } from 'lucide-react';
+import { TrendingUp, AlertTriangle, CreditCard, Home, Coffee, ArrowUpRight, ArrowDownRight, Minus, Shield, Activity, Bell, Check, Download } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Button } from '@/components/ui/button';
 import GlowCard from '@/components/reactbits/GlowCard';
 import ProgressRing from '@/components/reactbits/ProgressRing';
 import CountUpNumber from '@/components/reactbits/CountUpNumber';
 import RippleButton from '@/components/reactbits/RippleButton';
+import { downloadReport, setAlertPreferences } from '@/lib/modalUtils';
 import type { 
   LifestyleIncomeGap, 
   SilentUpgrade, 
@@ -70,6 +75,13 @@ const mockDriftMeter: LifestyleDriftMeter = {
 
 const LifestyleInflationSection: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [reportDialogOpen, setReportDialogOpen] = useState(false);
+  const [alertsDialogOpen, setAlertsDialogOpen] = useState(false);
+  const [alertChannels, setAlertChannels] = useState<Array<'email' | 'push' | 'in-app'>>(['in-app']);
+  const [alertFrequency, setAlertFrequency] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
+  const [alertThreshold, setAlertThreshold] = useState(500);
+  const [reportSuccess, setReportSuccess] = useState(false);
+  const [alertsSuccess, setAlertsSuccess] = useState(false);
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
@@ -345,13 +357,140 @@ const LifestyleInflationSection: React.FC = () => {
       </div>
 
       {/* Action Buttons */}
-      <div className="flex gap-4 justify-center">
-        <RippleButton variant="primary">
-          Generate Inflation Report
-        </RippleButton>
-        <RippleButton variant="secondary">
-          Set Lifestyle Alerts
-        </RippleButton>
+      <div className="flex gap-4 justify-center flex-wrap">
+        <Dialog open={reportDialogOpen} onOpenChange={setReportDialogOpen}>
+          <DialogTrigger asChild>
+            <RippleButton variant="primary">
+              <Download className="h-4 w-4 mr-2" />
+              Generate Inflation Report
+            </RippleButton>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Generate Lifestyle Inflation Report</DialogTitle>
+              <DialogDescription>
+                Download a detailed report of your lifestyle inflation patterns
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <p className="text-sm font-medium mb-3">Report Includes:</p>
+                <ul className="space-y-1 text-sm">
+                  <li>✓ Silent upgrades and lifestyle changes</li>
+                  <li>✓ Subscription growth analysis</li>
+                  <li>✓ Income vs. lifestyle growth comparison</li>
+                  <li>✓ Projected impact on savings</li>
+                  <li>✓ Recommendations</li>
+                </ul>
+              </div>
+              <Button 
+                className="w-full"
+                onClick={() => {
+                  const reportData = {
+                    title: 'Lifestyle Inflation Report',
+                    content: JSON.stringify({
+                      generatedAt: new Date().toISOString(),
+                      lifestyleGap: mockLifestyleGap,
+                      silentUpgrades: mockSilentUpgrades,
+                      subscriptionCreep: mockSubscriptionCreep,
+                    }, null, 2),
+                    format: 'pdf', // Changed from default JSON to PDF
+                  };
+                  const success = downloadReport(reportData);
+                  if (success) {
+                    setReportSuccess(true);
+                    setTimeout(() => {
+                      setReportDialogOpen(false);
+                      setReportSuccess(false);
+                    }, 1500);
+                  }
+                }}
+              >
+                {reportSuccess ? <><Check className="h-4 w-4 mr-2" /> PDF Generated!</> : 'Download PDF Report'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={alertsDialogOpen} onOpenChange={setAlertsDialogOpen}>
+          <DialogTrigger asChild>
+            <RippleButton variant="secondary">
+              <Bell className="h-4 w-4 mr-2" />
+              Set Lifestyle Alerts
+            </RippleButton>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Set Lifestyle Inflation Alerts</DialogTitle>
+              <DialogDescription>
+                Get notified when lifestyle inflation is detected
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label className="text-base font-medium mb-3 block">Alert Channels</Label>
+                <div className="space-y-2">
+                  {(['email', 'push', 'in-app'] as const).map((channel) => (
+                    <div key={channel} className="flex items-center gap-2">
+                      <Checkbox 
+                        checked={alertChannels.includes(channel)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setAlertChannels([...alertChannels, channel]);
+                          } else {
+                            setAlertChannels(alertChannels.filter(c => c !== channel));
+                          }
+                        }}
+                      />
+                      <Label className="capitalize cursor-pointer">{channel}</Label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <Label>Frequency</Label>
+                <select 
+                  value={alertFrequency}
+                  onChange={(e) => setAlertFrequency(e.target.value as any)}
+                  className="w-full p-2 rounded border bg-background mt-1"
+                >
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+              <div>
+                <Label>Alert Threshold (₹)</Label>
+                <input 
+                  type="number" 
+                  value={alertThreshold}
+                  onChange={(e) => setAlertThreshold(Number(e.target.value))}
+                  className="w-full p-2 rounded border bg-background mt-1"
+                />
+              </div>
+              <Button 
+                className="w-full"
+                onClick={() => {
+                  const success = setAlertPreferences({
+                    name: 'lifestyle_inflation_alerts',
+                    channels: alertChannels,
+                    frequency: alertFrequency,
+                    threshold: alertThreshold,
+                  });
+                  if (success) {
+                    setAlertsSuccess(true);
+                    setTimeout(() => {
+                      setAlertsDialogOpen(false);
+                      setAlertsSuccess(false);
+                    }, 1500);
+                  }
+                }}
+              >
+                {alertsSuccess ? <><Check className="h-4 w-4 mr-2" /> Set!</> : 'Set Alerts'}
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
