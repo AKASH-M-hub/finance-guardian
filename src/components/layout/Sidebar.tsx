@@ -13,7 +13,6 @@ import {
   Siren,
   Calculator,
   Globe,
-  MessageCircle,
   Users,
   Clock,
   ShieldBan,
@@ -38,7 +37,6 @@ interface SidebarProps {
 const Sidebar = ({ activeTab, onTabChange, isOpen = true, onClose }: SidebarProps) => {
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'ai-chat', label: 'AI Coach Chat', icon: MessageCircle },
     { id: 'ai-coach', label: 'AI Coach', icon: Brain },
     { id: 'crisis-mode', label: 'Crisis Mode', icon: Siren },
     { id: 'future-self', label: 'Future Self', icon: Clock },

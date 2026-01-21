@@ -9,7 +9,6 @@ import LifeEventsSection from '@/components/sections/LifeEventsSection';
 import ReportsSection from '@/components/sections/ReportsSection';
 import SettingsSection from '@/components/sections/SettingsSection';
 import AICoachSection from '@/components/sections/AICoachSection';
-import AICoachChatSection from '@/components/sections/AICoachChatSection';
 import CrisisModeSection from '@/components/sections/CrisisModeSection';
 import EMIIntelligenceSection from '@/components/sections/EMIIntelligenceSection';
 import GlobalIntelligenceSection from '@/components/sections/GlobalIntelligenceSection';
@@ -51,8 +50,6 @@ const AppContent = () => {
     switch (activeTab) {
       case 'dashboard':
         return <DashboardSection />;
-      case 'ai-chat':
-        return <AICoachChatSection />;
       case 'ai-coach':
         return <AICoachSection />;
       case 'crisis-mode':

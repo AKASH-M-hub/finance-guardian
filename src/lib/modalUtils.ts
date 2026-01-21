@@ -202,7 +202,7 @@ export const createRecoveryPlan = (planData: {
 export const navigateToAICoach = () => {
   // This assumes you have a routing system in place
   const event = new CustomEvent('navigate-to-section', {
-    detail: { section: 'ai-coach-chat' }
+    detail: { section: 'ai-coach' }
   });
   window.dispatchEvent(event);
 };
